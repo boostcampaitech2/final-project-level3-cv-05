@@ -30,7 +30,7 @@ class CustomDataset(Dataset):
         seg_img[img[:,:,0] != 255] = 1
 
         img, seg_img = self.insert_handwriting(img, seg_img)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         return img, seg_img
 
     def insert_handwriting(self, background_img, seg_img):
