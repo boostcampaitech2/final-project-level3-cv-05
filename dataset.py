@@ -5,18 +5,16 @@ from copy import deepcopy
 from torch.utils.data import Dataset
 
 class CustomDataset(Dataset):
-    def __init__(self, background_dir, handwriting_dir, transform=None, num_handwriting=15, segmentation=False):
+    def __init__(self, background_dir, handwriting_dir, background_transform=None, handwriting_transform=None, num_handwriting=15, segmentation=False):
         self.background_path = background_dir
         self.handwriting_path = handwriting_dir
         self.num_handwriting = num_handwriting
-        self.transform = transform
+        self.background_transform = background_transform
+        self.handwriting_transform = handwriting_transform
         self.segmentation = segmentation
 
         self.background_images = os.listdir(self.background_path)
         self.handwriting_images = os.listdir(self.handwriting_path)
-
-    def set_transform(self, transform):
-        self.transform = transform
     
     def __len__(self):
         return len(self.background_images)
@@ -28,9 +26,11 @@ class CustomDataset(Dataset):
         
         hand_img, seg_img = self.insert_handwriting(hand_img)
 
-        if self.transform:
-            ori_img = self.transform(ori_img)
-            hand_img = self.transform(hand_img)
+        
+        if self.background_transform:
+            ori_img = self.background_transform(ori_img)
+        if self.handwriting_transform:
+            hand_img = self.handwriting_transform(hand_img)
 
         if self.segmentation:
             return ori_img, hand_img, seg_img
@@ -71,7 +71,8 @@ class CustomDataset(Dataset):
                 x2 = np.clip(x1 + handwriting_img.shape[1], 0, background_img.shape[1])
                 
                 exists = 0 < y2-y1 and 0 < x2-x1
-                if exists and background_img[y1:y2, x1:x2][background_img[y1:y2, x1:x2] < background_threshold].size == 0:
+                #if exists and background_img[y1:y2, x1:x2][background_img[y1:y2, x1:x2] < background_threshold].size == 0:
+                if exists:
                     background_img[y1:y2, x1:x2][handwriting_img[:y2-y1,:x2-x1] != 255] = handwriting_img[:y2-y1,:x2-x1][handwriting_img[:y2-y1,:x2-x1] != 255]
                     if self.segmentation:
                         seg_img[y1:y2, x1:x2][handwriting_img[:y2-y1,:x2-x1,0] != 255] = 2
