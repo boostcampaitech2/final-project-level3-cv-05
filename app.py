@@ -114,6 +114,7 @@ def main():
 		for idx,img in enumerate(img_files):
 			images.append(load_image(file_dir + "\\" + img_files[idx]))
 
+		#To do Change 
 		cols = st.columns(4)
 		for idx, img in enumerate(images):
 			cols[idx].image(images[idx],use_column_width=True)
