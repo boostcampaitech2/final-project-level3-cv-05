@@ -93,8 +93,6 @@ def main():
 			#Done?
 			if st.button("Are you done?"):
 				save_uploaded_csv(result_df)
-
-
 	elif choice == "MakePDF":
 		if st.button("Download make image"):
 			save_download_file()
@@ -120,19 +118,11 @@ def main():
 			cols[idx].image(images[idx],use_column_width=True)
 		
 		#Save pdf
-
-
-
-		
-
 	elif choice == "Answer":
 		st.subheader("Input name to find answer")
 
 		df = pd.read_csv("answer.csv")
 		st.write(df)
-
-		
-
 	else:
 		st.subheader("About")
 		st.text("수학 오답 노트 편집기")
