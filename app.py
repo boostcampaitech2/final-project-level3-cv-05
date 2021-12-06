@@ -4,7 +4,6 @@ import os
 import pandas as pd
 import csv
 from PIL import Image
-import glob 
 
 ip = '101.101.219.102:' #change server ip
 upload_dir = '/opt/ml/math_data' #change file
@@ -89,7 +88,6 @@ def main():
 				st.write(button_press)
 				save_results(result_df, button_press, image_file, p_name, answer)
 				save_uploaded_file(image_file)
-			
 			#Done?
 			if st.button("Are you done?"):
 				save_uploaded_csv(result_df)
