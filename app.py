@@ -116,7 +116,7 @@ def main():
 			if st.button("Are you done?"):
 				save_uploaded_csv(result_df)
 	elif choice == "MakePDF":
-		#PDF 구현 고민하기
+		#PDF 구현
 		st.text("Show")
 		
 		#Save pdf
