@@ -17,12 +17,12 @@ def load_image(image_file):
 	return img 
 
 #Fxn to Save answer
-def save_results(results_df,button_press,image_file,p_name,answer):
+def save_results(results_df,button_press,image_file,problem_name,answer):
 	results_df.at[button_press,'File name'] = image_file.name
-	results_df.at[button_press,'Nick name'] = p_name
+	results_df.at[button_press,'Nick name'] = problem_name
 	results_df.at[button_press,'Answer'] = answer
 	results_df.to_csv('answer.csv',index=None)
-	return None
+
 
 #Fxn to make csv file
 def load_data():
@@ -100,31 +100,32 @@ def main():
 			st.write(image_file.name)
 
 			#write name
-			p_name = st.text_input('Write nickname')
+			#problem_name = st.text_input('Write problem name')
 
 			#write anwer
-			answer = st.text_input('Write answer')
+			#answer = st.text_input('Write answer')
 
 			#saving file
 			if st.button("Save"):
-				button_press += 1
-				st.write(button_press)
-				save_results(result_df, button_press, image_file, p_name, answer)
+				#button_press += 1
+				#st.write(button_press)
+				# save_results(result_df, button_press, image_file, problem_name, answer)
 				save_uploaded_file(image_file)
-				save_after_file(new,p_name)
+				save_after_file(new,image_file.name)
 			#Done?
-			if st.button("Are you done?"):
-				save_uploaded_csv(result_df)
+			#if st.button("Are you done?"):
+				#save_uploaded_csv(result_df)
 	elif choice == "MakePDF":
 		#PDF 구현
 		st.text("Show")
 		
 		#Save pdf
 	elif choice == "Answer":
-		st.subheader("Input name to find answer")
+		st.text("Show")
+		# st.subheader("Input name to find answer")
 
-		df = pd.read_csv("answer.csv")
-		st.write(df)
+		# df = pd.read_csv("answer.csv")
+		# st.write(df)
 	else:
 		st.subheader("About")
 		st.text("수학 오답 노트 편집기")
