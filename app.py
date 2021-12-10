@@ -1,10 +1,10 @@
+from PIL import Image
+from fpdf import FPDF
+
 import streamlit as st
 import os
-
 import pandas as pd
 import csv
-from PIL import Image
-# from fpdf import FPDF
 import base64
 
 #streamlit run app.py --server.address=127.0.0.1
@@ -67,7 +67,12 @@ def create_download_link(val, filename):
     b64 = base64.b64encode(val)  # val looks like b'...'
     return f'<a href="data:application/octet-stream;base64,{b64.decode()}" download="{filename}.pdf">Download file</a>'
 
-def main():
+#Image Convert
+def convert_image(image):
+	convert = image.convert("LA")
+	return convert
+
+def streamlit_run():
 	result_df = load_data()
 	button_press = 0
 	#button_press = len(result_df)
@@ -81,22 +86,20 @@ def main():
 		st.subheader("Upload your problem images")
 		image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
 		if image_file is not None:
-			#upload Image
+			#Get Before Image
 			img = load_image(image_file)
-			result_df = load_data()
+			#result_df = load_data()
 
-			col1, col2 = st.columns(2)
+			before, after = st.columns(2)
 
-			#original = Image.open(img).convert("RGB")
-			col1.header("Before")
-			col1.image(img, use_column_width = True)
+			before.header("Before")
+			before.image(img, use_column_width = True)
 
-			new = img.convert('LA') #model된 걸로 바꾸기
+			convert_img = convert_image(img)
 
-			col2.header("After")
-			col2.image(new,use_column_width=True)
+			after.header("After")
+			after.image(convert_img,use_column_width=True)
 
-			#button_press = len(result_df)
 			st.write(image_file.name)
 
 			#write name
@@ -111,13 +114,27 @@ def main():
 				#st.write(button_press)
 				# save_results(result_df, button_press, image_file, problem_name, answer)
 				save_uploaded_file(image_file)
-				save_after_file(new,image_file.name)
+				save_after_file(convert_img,image_file.name)
 			#Done?
 			#if st.button("Are you done?"):
 				#save_uploaded_csv(result_df)
 	elif choice == "MakePDF":
 		#PDF 구현
-		st.text("Show")
+		report_image = st.text_input("Report Text")
+
+		export_as_pdf = st.button("Export Report")
+
+		if export_as_pdf:
+			pdf = FPDF()
+			pdf.add_page()
+			pdf.set_font("Arial","B",16)
+			pdf.cell(40,10,report_image)
+
+			html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
+
+			st.markdown(html, unsafe_allow_html = True)
+
+
 		
 		#Save pdf
 	elif choice == "Answer":
@@ -135,4 +152,4 @@ def main():
 
 
 if __name__ == '__main__':
-	main()
+	streamlit_run()
