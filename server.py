@@ -8,6 +8,13 @@ import csv
 import base64
 
 import crop_editor
+
+from models.AttentionRes_G import AttentionRes_G
+import torch
+import torchvision.transforms as transforms
+import cv2
+import numpy as np
+
 #streamlit run server.py --server.address=127.0.0.1
 #이렇게 하면 브라우저가 Local로 띄워짐.
 
@@ -15,58 +22,77 @@ import crop_editor
 # Fxn
 @st.cache
 def load_image(image_file):
-	img = Image.open(image_file)
-	return img 
+    img = Image.open(image_file)
+    return img 
+
+@st.cache
+def load_attgan_model(model_file):
+    net = AttentionRes_G(3, 3, 64, n_blocks=9)
+    load_path = './checkpoints/'+model_file
+    state_dict = torch.load(load_path, map_location=str('cuda'))
+    net.load_state_dict(state_dict)
+    return net
+
+def tensor2im(input_image, imtype=np.uint8):
+    """"Converts a Tensor array into a numpy image array.
+    Parameters:
+        input_image (tensor) --  the input image tensor array
+        imtype (type)        --  the desired type of the converted numpy array
+    """
+    image_tensor = input_image.data
+    image_numpy = image_tensor[0].cpu().float().numpy()
+    image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0  # post-processing: tranpose and scaling
+    return image_numpy.astype(imtype)
 
 
 #Fxn to Save answer
 def save_results(results_df,button_press,image_file,problem_name,answer):
-	results_df.at[button_press,'File name'] = image_file.name
-	results_df.at[button_press,'Nick name'] = problem_name
-	results_df.at[button_press,'Answer'] = answer
-	results_df.to_csv('answer.csv',index=None)
+    results_df.at[button_press,'File name'] = image_file.name
+    results_df.at[button_press,'Nick name'] = problem_name
+    results_df.at[button_press,'Answer'] = answer
+    results_df.to_csv('answer.csv',index=None)
 
 
 #Fxn to make csv file
 def load_data():
-	header = ["File name","Nick name","Answer"]
-	try:
-		df = pd.read_csv('answer.csv')
-	except FileNotFoundError:
-		with open('answer.csv','w',newline='') as f:
-			writer = csv.writer(f)
-			writer.writerow(header)
-		df = pd.read_csv('answer.csv')
-	return df
+    header = ["File name","Nick name","Answer"]
+    try:
+        df = pd.read_csv('answer.csv')
+    except FileNotFoundError:
+        with open('answer.csv','w',newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(header)
+        df = pd.read_csv('answer.csv')
+    return df
 
 
 #Fxn to Save Upload csv
 def save_uploaded_csv(uploadfile):
-	if(os.path.isdir("math_data") == False): #Change path
-		os.mkdir("math_data")
+    if(os.path.isdir("math_data") == False): #Change path
+        os.mkdir("math_data")
 
-	with open(os.path.join("math_data",uploadfile.name),'wb') as f:
-		f.write(uploadfile.getbuffer())
-	return st.success("Save Answer : To Show Click Answer on Menu")
+    with open(os.path.join("math_data",uploadfile.name),'wb') as f:
+        f.write(uploadfile.getbuffer())
+    return st.success("Save Answer : To Show Click Answer on Menu")
 
 
 #Fxn to Save Uploaded File to Directory
 def save_uploaded_file(uploadfile):
-	if(os.path.isdir("math_data") == False): #Change path
-		os.mkdir("math_data")
+    if(os.path.isdir("math_data") == False): #Change path
+        os.mkdir("math_data")
 
-	with open(os.path.join("math_data",uploadfile.name),'wb') as f:
-		f.write(uploadfile.getbuffer())
-	return st.success("Upload file :{} in Server".format(uploadfile.name))
+    with open(os.path.join("math_data",uploadfile.name),'wb') as f:
+        f.write(uploadfile.getbuffer())
+    return st.success("Upload file :{} in Server".format(uploadfile.name))
 
 
 #Fxn to Save After File
 def save_after_file(file,name):
-	if(os.path.isdir("new_data")==False):
-		os.mkdir("new_data")
+    if(os.path.isdir("new_data")==False):
+        os.mkdir("new_data")
 
-	file.save('./new_data/{}'.format(name),'png')
-	return st.success("Upload file :{} in Server".format(name))
+    file.save('./new_data/{}'.format(name),'png')
+    return st.success("Upload file :{} in Server".format(name))
 
 
 #pdf 다운 (아직 완성 안됨)
@@ -77,88 +103,109 @@ def create_download_link(val, filename):
 
 #Object Detection
 def OD_image(image):
-	convert = image.convert("LA")
-	return convert
+    # convert = image.convert("LA")
+    # return convert
+    return image
 
 
 #GAN
+@st.cache
 def GAN_image(image):
-	convert = image.convert("LA")
-	return convert
+    ''' Erase Handwriting in image 
+    Parameters:
+        image : PIL Image Type
+    '''
+    # load model
+    gan_model = load_attgan_model('attentiongan.pth')
+    # data transform
+    load_size = 512
+    img_transform = transforms.Compose(
+        [transforms.Resize([load_size,load_size], Image.BICUBIC),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    af_transform = img_transform(image)
+    c,w,h = af_transform.shape
+    af_transform = np.reshape(af_transform, (1,c,w,h)) # convert to batch form
+    # forward and tensor to image
+    with torch.no_grad():
+        output = gan_model(af_transform)
+        output = tensor2im(output)
+        output = Image.fromarray(output)
+    return output
 
 
 def streamlit_run():
-	result_df = load_data()
-	button_press = 0
+    result_df = load_data()
+    button_press = 0
 
-	st.title("Math wrong answer editor")
+    st.title("Math wrong answer editor")
 
-	menu = ["MakeImage","MakePDF","Answer","Crop","About"]
-	choice = st.sidebar.selectbox("Menu",menu)
+    menu = ["MakeImage","MakePDF","Answer","Crop","About"]
+    choice = st.sidebar.selectbox("Menu",menu)
 
-	if choice == "MakeImage":
-		st.subheader("Upload your problem images")
-		image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
-		
-		if image_file is not None:
-			#Get Before Image
-			img = load_image(image_file)
+    if choice == "MakeImage":
+        st.subheader("Upload your problem images")
+        image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
 
-			st.subheader("Before")
-			st.image(img, use_column_width = True)
+        if image_file is not None:
+            #Get Before Image
+            img = load_image(image_file)
 
-			od_img = OD_image(img)
-			gan_img = GAN_image(od_img)
-			after_img = GAN_image(gan_img)
+            st.subheader("Before")
+            st.image(img, use_column_width = True)
 
-			flag_od = st.checkbox("Object Detection")
-			flag_gan = st.checkbox("GAN")
-			flag_after = st.checkbox("AFTER")
+            od_img = OD_image(img)
+            gan_img = GAN_image(od_img)
+            after_img = GAN_image(gan_img)
 
-			if flag_od:
-				st.subheader("Object Detection")
-				st.image(od_img,use_column_width = True)
-			if flag_gan:
-				st.subheader("GAN")
-				st.image(gan_img,use_column_width = True)
-			if flag_after:
-				st.subheader("AFTER")
-				st.image(after_img,use_column_width = True)
+            flag_od = st.checkbox("Object Detection")
+            flag_gan = st.checkbox("GAN")
+            flag_after = st.checkbox("AFTER")
 
-			st.write(image_file.name)
+            if flag_od:
+                st.subheader("Object Detection")
+                st.image(od_img,use_column_width = True)
+            if flag_gan:
+                st.subheader("GAN")
+                st.image(gan_img,use_column_width = True)
+            if flag_after:
+                st.subheader("AFTER")
+                st.image(after_img,use_column_width = True)
 
-			#saving file
-			if st.button("Save"):
-				save_uploaded_file(image_file)
-				save_after_file(after_img,image_file.name)
+            st.write(image_file.name)
 
-	elif choice == "MakePDF":
-		#PDF 구현
-		report_image = st.text_input("Report Text")
+            #saving file
+            if st.button("Save"):
+                save_uploaded_file(image_file)
+                save_after_file(after_img,image_file.name)
 
-		export_as_pdf = st.button("Export Report")
+    elif choice == "MakePDF":
+        #PDF 구현
+        report_image = st.text_input("Report Text")
 
-		if export_as_pdf:
-			pdf = FPDF()
-			pdf.add_page()
-			pdf.set_font("Arial","B",16)
-			pdf.cell(40,10,report_image)
+        export_as_pdf = st.button("Export Report")
 
-			html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
+        if export_as_pdf:
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial","B",16)
+            pdf.cell(40,10,report_image)
 
-			st.markdown(html, unsafe_allow_html = True)
+            html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
 
-		#Save pdf
-	elif choice == "Answer":
-		st.text("Show")
-	elif choice == "Crop":
-		crop_editor.crop_editor()
-	else:
-		st.subheader("About")
-		st.text("수학 오답 노트 편집기")
-		st.text("친구구했조")
-		st.text("Freinds")
+            st.markdown(html, unsafe_allow_html = True)
+
+        #Save pdf
+    elif choice == "Answer":
+        st.text("Show")
+    elif choice == "Crop":
+        crop_editor.crop_editor()
+    else:
+        st.subheader("About")
+        st.text("수학 오답 노트 편집기")
+        st.text("친구구했조")
+        st.text("Freinds")
 
 
 if __name__ == '__main__':
-	streamlit_run()
+    streamlit_run()
