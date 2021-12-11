@@ -107,11 +107,12 @@ def streamlit_run():
 			st.image(img, use_column_width = True)
 
 			od_img = OD_image(img)
-			gan_img = GAN_image(img)
-			after_img = GAN_image(od_img)
+			gan_img = GAN_image(od_img)
+			after_img = GAN_image(gan_img)
 
 			flag_od = st.checkbox("Object Detection")
 			flag_gan = st.checkbox("GAN")
+			flag_after = st.checkbox("AFTER")
 
 			if flag_od:
 				st.subheader("Object Detection")
@@ -119,7 +120,7 @@ def streamlit_run():
 			if flag_gan:
 				st.subheader("GAN")
 				st.image(gan_img,use_column_width = True)
-			if flag_od and flag_gan:
+			if flag_after:
 				st.subheader("AFTER")
 				st.image(after_img,use_column_width = True)
 
