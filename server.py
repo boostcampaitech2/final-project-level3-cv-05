@@ -7,12 +7,9 @@ import pandas as pd
 import csv
 import base64
 
-
 import crop_editor
-
-#streamlit run app.py --server.address=127.0.0.1
-#이렇게 하면 브라우저가 Local로 띄어짐.
-
+#streamlit run server.py --server.address=127.0.0.1
+#이렇게 하면 브라우저가 Local로 띄워짐.
 
 
 # Fxn
@@ -91,14 +88,12 @@ def GAN_image(image):
 
 
 def streamlit_run():
-
 	result_df = load_data()
 	button_press = 0
 
 	st.title("Math wrong answer editor")
 
 	menu = ["MakeImage","MakePDF","Answer","Crop","About"]
-
 	choice = st.sidebar.selectbox("Menu",menu)
 
 	if choice == "MakeImage":
@@ -108,7 +103,6 @@ def streamlit_run():
 		if image_file is not None:
 			#Get Before Image
 			img = load_image(image_file)
-
 
 			st.subheader("Before")
 			st.image(img, use_column_width = True)
@@ -154,14 +148,11 @@ def streamlit_run():
 
 			st.markdown(html, unsafe_allow_html = True)
 
-
 		#Save pdf
 	elif choice == "Answer":
 		st.text("Show")
 	elif choice == "Crop":
-		#Crop Editor
 		crop_editor.crop_editor()
-
 	else:
 		st.subheader("About")
 		st.text("수학 오답 노트 편집기")
@@ -171,4 +162,3 @@ def streamlit_run():
 
 if __name__ == '__main__':
 	streamlit_run()
-
