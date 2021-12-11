@@ -81,7 +81,7 @@ def crop_editor():
     
     
     if st.button("Save dataframe"):
-        open('data.json','w').write(json.dumps(canvas_result.json_data))
+        open('data.json','w').write(json.dumps(canvas_result.json_data, indent=4))
 
 
 if __name__ == "__main__":
