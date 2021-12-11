@@ -27,6 +27,7 @@ def crop_problem(pdf_path: str) :
     num_pos_json = dict()
 
     pdf_files = os.listdir(pdf_path)
+    # Find problem pos and num pos in pdf 
     for pdf_file in tqdm(pdf_files) :
         images = convert_from_path(osp.join(pdf_path,pdf_file))
         img_w,img_h = images[0].size
@@ -76,6 +77,7 @@ def crop_problem(pdf_path: str) :
 
     crop_images = []
     num_pos = []
+    # Problem Crop and save num_pos
     for page , image in enumerate(images) :
 
         np_img = np.array(image)
@@ -86,11 +88,17 @@ def crop_problem(pdf_path: str) :
                 
             h,w = y2-y1,x2-x1
             tmp = []
+            isWrong = False
             for x,y in nums[page][5*idx:5*idx+5] :
                 x -= x1
                 y -= y1
+                # wrong pos
+                if x < 0 or y < 0 : 
+                    isWrong = True
+                    break
                 tmp.append([x,y])
-
+            if isWrong :
+                continue
             num_pos.append(tmp)
             crop_images.append(np_img[y1:y2,x1:x2,:].copy())
 
