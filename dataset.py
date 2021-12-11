@@ -19,7 +19,10 @@ class CustomDataset(Dataset):
         self.background_transform = background_transform
         self.handwriting_transform = handwriting_transform
         self.segmentation = segmentation
-        
+        self.norm_tensor = A.Compose([
+            A.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5)),
+            A.pytorch.transforms.ToTensorV2()
+        ])
         with open(num_pos_json) as json_file :
             self.num_pos = json.load(json_file)
         
@@ -39,11 +42,11 @@ class CustomDataset(Dataset):
         hand_img = deepcopy(ori_img)
         
         hand_img, seg_img = self.insert_handwriting(hand_img, self.background_images[idx], ori_h, ori_w)
-        ori_img = A.pytorch.transforms.ToTensorV2()(image=ori_img)['image']
-        hand_img = A.pytorch.transforms.ToTensorV2()(image=hand_img)['image']
+        ori_img = self.norm_tensor(image=ori_img)['image']
+        hand_img = self.norm_tensor(image=hand_img)['image']
         
         if self.segmentation:
-            seg_img = A.pytorch.transforms.ToTensorV2()(image=seg_img)['image']
+            seg_img = self.norm_tensor(image=seg_img)['image']
             return ori_img, hand_img, seg_img
         else:
             return ori_img, hand_img
@@ -155,7 +158,9 @@ if __name__ == "__main__":
         A.RandomCrop(512,512),
         A.RandomBrightnessContrast(p=0.5),
     ])
-    handwriting_transform = None
+    handwriting_transform = A.Compose([
+        A.RandomBrightnessContrast(p=0.5),
+    ])
     
     np.random.seed(42)
     dataset = CustomDataset(background_dir, handwriting_dir, check_dir, num_pos_json, num_handwriting = 5, 
