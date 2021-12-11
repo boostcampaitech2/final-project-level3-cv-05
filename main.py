@@ -12,11 +12,9 @@ class WebServer(threading.Thread):
         
 if __name__ == "__main__":
     th_server = WebServer('server')
-    th_test = TEST('TEST')
 
     threads = list()
     threads.append(th_server)
-    threads.append(th_test)
 
     exited = list()
 

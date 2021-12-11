@@ -7,6 +7,8 @@ import pandas as pd
 import csv
 import base64
 
+from inference import (OD_image, GAN_image)
+
 #streamlit run app.py --server.address=127.0.0.1
 #이렇게 하면 브라우저가 Local로 띄워짐.
 
@@ -72,18 +74,6 @@ def save_after_file(file,name):
 def create_download_link(val, filename):
     b64 = base64.b64encode(val)  # val looks like b'...'
     return f'<a href="data:application/octet-stream;base64,{b64.decode()}" download="{filename}.pdf">Download file</a>'
-
-
-#Object Detection
-def OD_image(image):
-	convert = image.convert("LA")
-	return convert
-
-
-#GAN
-def GAN_image(image):
-	convert = image.convert("LA")
-	return convert
 
 
 def streamlit_run():
