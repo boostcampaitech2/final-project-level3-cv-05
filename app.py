@@ -67,10 +67,16 @@ def create_download_link(val, filename):
     b64 = base64.b64encode(val)  # val looks like b'...'
     return f'<a href="data:application/octet-stream;base64,{b64.decode()}" download="{filename}.pdf">Download file</a>'
 
-#Image Convert
-def convert_image(image):
+#Object Detection
+def OD_image(image):
 	convert = image.convert("LA")
 	return convert
+
+#GAN
+def GAN_image(image):
+	convert = image.convert("LA")
+	return convert
+
 
 def streamlit_run():
 	result_df = load_data()
@@ -85,20 +91,34 @@ def streamlit_run():
 	if choice == "MakeImage":
 		st.subheader("Upload your problem images")
 		image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
+		
 		if image_file is not None:
 			#Get Before Image
 			img = load_image(image_file)
 			#result_df = load_data()
 
-			before, after = st.columns(2)
+			before, od, gan, after = st.columns(4)
 
-			before.header("Before")
+			before.subheader("Before")
 			before.image(img, use_column_width = True)
 
-			convert_img = convert_image(img)
+			od_img = OD_image(img)
+			gan_img = GAN_image(img)
+			after_img = GAN_image(od_img)
 
-			after.header("After")
-			after.image(convert_img,use_column_width=True)
+			flag_od = st.checkbox("Object Detection")
+			flag_gan = st.checkbox("GAN")
+
+			od.subheader("Only Crop")
+			gan.subheader("Only Erase")
+			after.subheader("Both")
+
+			if flag_od and flag_gan:
+				after.image(after_img,use_column_width = True)
+			if flag_od:
+				od.image(od_img,use_column_width = True)
+			if flag_gan:
+				gan.image(gan_img,use_column_width = True)
 
 			st.write(image_file.name)
 
@@ -114,7 +134,7 @@ def streamlit_run():
 				#st.write(button_press)
 				# save_results(result_df, button_press, image_file, problem_name, answer)
 				save_uploaded_file(image_file)
-				save_after_file(convert_img,image_file.name)
+				save_after_file(after_img,image_file.name)
 			#Done?
 			#if st.button("Are you done?"):
 				#save_uploaded_csv(result_df)
