@@ -8,8 +8,7 @@ from pdf2image import convert_from_path
 import re
 import numpy as np
 import cv2
-
-import time
+import json
 import os
 import os.path as osp
 from tqdm import tqdm
@@ -21,19 +20,17 @@ def crop_problem(pdf_path: str) :
     def scale(x,y,ori_h,ori_w,h,w) :
         return int(x * ori_w / w) , ori_h - int(y * ori_h / h)
     
-    os.mkdir('background_with_check')
-    os.mkdir('background_with_check/with_check')
-    os.mkdir('background_with_check/background')
+    if not osp.isdir('background') :
+        os.mkdir('background')
 
-        
-    
+    # save num_pos 1,2,3,4,5
+    num_pos_json = dict()
+
     pdf_files = os.listdir(pdf_path)
     for pdf_file in tqdm(pdf_files) :
         images = convert_from_path(osp.join(pdf_path,pdf_file))
         img_w,img_h = images[0].size
-
     
-
         fp = open(osp.join(pdf_path,pdf_file),'rb')
         rsrcmgr = PDFResourceManager()
         laparams = LAParams()
@@ -41,7 +38,6 @@ def crop_problem(pdf_path: str) :
         interpreter = PDFPageInterpreter(rsrcmgr, device)
         pages = PDFPage.get_pages(fp)
 
-        cnt = 1
         pad = 30
         LT,RB = [[] for _ in range(len(images))],[[] for _ in range(len(images))]
         nums  = [[] for _ in range(len(images))]
@@ -79,9 +75,7 @@ def crop_problem(pdf_path: str) :
                                 LT[idx].append([x-pad,y-pad])
 
     crop_images = []
-    crop_images_check = []
-    check_files = sorted(os.listdir('check_img'))
-
+    num_pos = []
     for page , image in enumerate(images) :
 
         np_img = np.array(image)
@@ -89,37 +83,25 @@ def crop_problem(pdf_path: str) :
         for idx, ((x1,y1),(x2,y2)) in enumerate(zip(LT[page],RB[page])) :
             if x1 > x2 or y1 > y2 or x2 -x1 > 1169 :
                 continue
-            # save ori_background
+                
+            h,w = y2-y1,x2-x1
+            tmp = []
+            for x,y in nums[page][5*idx:5*idx+5] :
+                x -= x1
+                y -= y1
+                tmp.append([x,y])
+
+            num_pos.append(tmp)
             crop_images.append(np_img[y1:y2,x1:x2,:].copy())
-            
-            # save check_background ( random 1-5 ) 
-            for _ in range(np.random.randint(1,5)) :
-                file_idx = np.random.randint(0,len(check_files))
-                ch_img = cv2.imread(osp.join('check_img',check_files[file_idx]))
-                ch_img = cv2.resize(ch_img,(100,100))
 
-                h,w = ch_img.shape[:2]
-                ch = np.ones((h,w,3)).astype(np.uint8) * 255
-                ch_mask = np.zeros((h,w,1)).astype(np.uint8)
-
-                x,y,_ = np.where(ch_img < 200)
-
-                for x_,y_ in zip(x,y) :
-                    ch[x_,y_,:] = 0
-                    ch_mask[x_,y_,:] = 255
-
-                num = np.random.randint(5*idx,5*idx+5)
-                nx,ny = nums[page][num]
-
-
-                cv2.copyTo(ch,ch_mask,np_img[ny-50:ny+50,nx-50:nx+50,:])
-            crop_images_check.append(np_img[y1:y2,x1:x2,:])
-
-    for img,img_check in zip(crop_images,crop_images_check) :
+    for img,pos in zip(crop_images,num_pos) :
         name = np.random.randint(int(1e6))
         
-        cv2.imwrite(f'background_with_check/with_check/{name}.png',img_check[:,:,::-1])
-        cv2.imwrite(f'background_with_check/background/{name}.png',img[:,:,::-1])
+        cv2.imwrite(f'background/{name}.png',img[:,:,::-1])
+        num_pos_json[f'{name}.png'] = pos
+        
+    with open("pos.json","w") as f : 
+        json.dump(num_pos_json,f)
 
             
 def ori_handwriting(hand_path: str) :
