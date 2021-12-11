@@ -42,7 +42,7 @@ def make_detection_canvas(points):
     
 
 
-def fix_detection():
+def crop_editor():
     #Get Detection point (x,y,width,height)
     points = [(0,274,152,93),(305,286,110,116)]
     json_file = make_detection_canvas(points)
@@ -85,4 +85,4 @@ def fix_detection():
 
 
 if __name__ == "__main__":
-    fix_detection()
+    crop_editor()

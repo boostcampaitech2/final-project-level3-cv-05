@@ -7,7 +7,7 @@ import pandas as pd
 import csv
 import base64
 
-import fix_detection
+import crop_editor
 
 #streamlit run app.py --server.address=127.0.0.1
 #이렇게 하면 브라우저가 Local로 띄어짐.
@@ -165,7 +165,8 @@ def streamlit_run():
 		# df = pd.read_csv("answer.csv")
 		# st.write(df)
 	elif choice == "Crop":
-		fix_detection.fix_detection()
+		#Crop Editor
+		crop_editor.crop_editor()
 
 	else:
 		st.subheader("About")
