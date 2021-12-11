@@ -1,15 +1,15 @@
+from PIL import Image
+from fpdf import FPDF
+
 import streamlit as st
 import os
-
 import pandas as pd
 import csv
-from PIL import Image
+import base64
 
-ip = '101.101.219.102:' #change server ip
-upload_dir = '/opt/ml/math_data' #change file
-download_dir = '/opt/ml/math_data' #model 돌린 후, 저장될 폴더
-local_dir = 'C:\\Users\\cac73' #local dir
-dir_name = "math_data" # download_dir 랑 같은 이름으로 하기.
+#streamlit run app.py --server.address=127.0.0.1
+#이렇게 하면 브라우저가 Local로 띄워짐.
+
 
 # Fxn
 @st.cache
@@ -17,13 +17,14 @@ def load_image(image_file):
 	img = Image.open(image_file)
 	return img 
 
+
 #Fxn to Save answer
-def save_results(results_df,button_press,image_file,p_name,answer):
+def save_results(results_df,button_press,image_file,problem_name,answer):
 	results_df.at[button_press,'File name'] = image_file.name
-	results_df.at[button_press,'Nick name'] = p_name
+	results_df.at[button_press,'Nick name'] = problem_name
 	results_df.at[button_press,'Answer'] = answer
 	results_df.to_csv('answer.csv',index=None)
-	return None
+
 
 #Fxn to make csv file
 def load_data():
@@ -37,29 +38,57 @@ def load_data():
 		df = pd.read_csv('answer.csv')
 	return df
 
+
 #Fxn to Save Upload csv
 def save_uploaded_csv(uploadfile):
-	command = "scp " + "answer.csv" + " root@" + ip + upload_dir
-	os.system(command)
+	if(os.path.isdir("math_data") == False): #Change path
+		os.mkdir("math_data")
+
+	with open(os.path.join("math_data",uploadfile.name),'wb') as f:
+		f.write(uploadfile.getbuffer())
 	return st.success("Save Answer : To Show Click Answer on Menu")
 
+
 #Fxn to Save Uploaded File to Directory
-def save_uploaded_file(uploadedfile):
-	command = "scp " + uploadedfile.name + " root@" + ip + upload_dir
-	os.system(command)
-	return st.success("Upload file :{} in Server".format(uploadedfile.name))
+def save_uploaded_file(uploadfile):
+	if(os.path.isdir("math_data") == False): #Change path
+		os.mkdir("math_data")
 
-#Fxn to Save Downloaded File 
-def save_download_file():
-	command = "scp -P 2229 -i ~/.ssh/key -r root@" + ip + download_dir + " " + local_dir 
-	os.system(command)
-	return st.success("Download file : Data in your local {}".format(local_dir))
+	with open(os.path.join("math_data",uploadfile.name),'wb') as f:
+		f.write(uploadfile.getbuffer())
+	return st.success("Upload file :{} in Server".format(uploadfile.name))
 
 
-def main():
+#Fxn to Save After File
+def save_after_file(file,name):
+	if(os.path.isdir("new_data")==False):
+		os.mkdir("new_data")
+
+	file.save('./new_data/{}'.format(name),'png')
+	return st.success("Upload file :{} in Server".format(name))
+
+
+#pdf 다운 (아직 완성 안됨)
+def create_download_link(val, filename):
+    b64 = base64.b64encode(val)  # val looks like b'...'
+    return f'<a href="data:application/octet-stream;base64,{b64.decode()}" download="{filename}.pdf">Download file</a>'
+
+
+#Object Detection
+def OD_image(image):
+	convert = image.convert("LA")
+	return convert
+
+
+#GAN
+def GAN_image(image):
+	convert = image.convert("LA")
+	return convert
+
+
+def streamlit_run():
 	result_df = load_data()
 	button_press = 0
-	#button_press = len(result_df)
 
 	st.title("Math wrong answer editor")
 
@@ -69,58 +98,57 @@ def main():
 	if choice == "MakeImage":
 		st.subheader("Upload your problem images")
 		image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
+		
 		if image_file is not None:
-			#upload Image
+			#Get Before Image
 			img = load_image(image_file)
-			result_df = load_data()
-			#button_press = len(result_df)
+
+			st.subheader("Before")
+			st.image(img, use_column_width = True)
+
+			od_img = OD_image(img)
+			gan_img = GAN_image(img)
+			after_img = GAN_image(od_img)
+
+			flag_od = st.checkbox("Object Detection")
+			flag_gan = st.checkbox("GAN")
+
+			if flag_od:
+				st.subheader("Object Detection")
+				st.image(od_img,use_column_width = True)
+			if flag_gan:
+				st.subheader("GAN")
+				st.image(gan_img,use_column_width = True)
+			if flag_od and flag_gan:
+				st.subheader("AFTER")
+				st.image(after_img,use_column_width = True)
+
 			st.write(image_file.name)
-
-			#write name
-			p_name = st.text_input('Write nickname')
-
-			#write anwer
-			answer = st.text_input('Write answer')
 
 			#saving file
 			if st.button("Save"):
-				button_press += 1
-				st.write(button_press)
-				save_results(result_df, button_press, image_file, p_name, answer)
 				save_uploaded_file(image_file)
-			#Done?
-			if st.button("Are you done?"):
-				save_uploaded_csv(result_df)
+				save_after_file(after_img,image_file.name)
+
 	elif choice == "MakePDF":
-		if st.button("Download make image"):
-			save_download_file()
-		
-		st.subheader("Print PDF")
+		#PDF 구현
+		report_image = st.text_input("Report Text")
 
-		#dir 에서 사진 파일만 가져오기.
-		file_dir = local_dir + "\\" + dir_name
-		file_list = os.listdir(file_dir)
-		img_files = [file for file in file_list if file.endswith(('png','jpeg','jpg'))]
-		
-		st.write(img_files)
+		export_as_pdf = st.button("Export Report")
 
-		image = load_image(file_dir + "\\" + img_files[0])
+		if export_as_pdf:
+			pdf = FPDF()
+			pdf.add_page()
+			pdf.set_font("Arial","B",16)
+			pdf.cell(40,10,report_image)
 
-		images = []
-		for idx,img in enumerate(img_files):
-			images.append(load_image(file_dir + "\\" + img_files[idx]))
+			html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
 
-		#To do Change 
-		cols = st.columns(4)
-		for idx, img in enumerate(images):
-			cols[idx].image(images[idx],use_column_width=True)
-		
+			st.markdown(html, unsafe_allow_html = True)
+
 		#Save pdf
 	elif choice == "Answer":
-		st.subheader("Input name to find answer")
-
-		df = pd.read_csv("answer.csv")
-		st.write(df)
+		st.text("Show")
 	else:
 		st.subheader("About")
 		st.text("수학 오답 노트 편집기")
@@ -128,6 +156,5 @@ def main():
 		st.text("Freinds")
 
 
-
 if __name__ == '__main__':
-	main()
+	streamlit_run()
