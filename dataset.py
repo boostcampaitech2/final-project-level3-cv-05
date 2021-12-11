@@ -5,7 +5,7 @@ import json
 from copy import deepcopy
 from torch.utils.data import Dataset
 import albumentations as A
-
+import albumentations.pytorch
 
 class CustomDataset(Dataset):
     def __init__(self, background_dir, handwriting_dir, check_dir, num_pos_json, background_transform=None, 
@@ -33,26 +33,28 @@ class CustomDataset(Dataset):
     def __getitem__(self, idx):
         ori_img = cv2.imread(os.path.join(self.background_path, self.background_images[idx]))
         ori_img = cv2.cvtColor(ori_img, cv2.COLOR_BGR2RGB)
+        ori_h, ori_w = ori_img.shape[:2]
+        if self.background_transform : 
+            ori_img = self.background_transform(image=ori_img)['image']
         hand_img = deepcopy(ori_img)
         
-        hand_img, seg_img = self.insert_handwriting(hand_img, self.background_images[idx])
-
+        hand_img, seg_img = self.insert_handwriting(hand_img, self.background_images[idx], ori_h, ori_w)
+        ori_img = A.pytorch.transforms.ToTensorV2()(image=ori_img)['image']
+        hand_img = A.pytorch.transforms.ToTensorV2()(image=hand_img)['image']
         
         if self.segmentation:
+            seg_img = A.pytorch.transforms.ToTensorV2()(image=seg_img)['image']
             return ori_img, hand_img, seg_img
         else:
             return ori_img, hand_img
 
 
-    def insert_handwriting(self, background_img, img_file_name):
+    def insert_handwriting(self, background_img, img_file_name, ori_h, ori_w):
         seg_img = None
         if self.segmentation:
             seg_img = np.zeros(background_img.shape[:2])
             seg_img[background_img[:,:,0] != 255] = 1
         num_insert = 0
-        
-        if self.background_transform : 
-            background_img = self.background_transform(image=background_img)['image']
         
         while num_insert < self.num_handwriting:
             num_insert += 1
@@ -70,8 +72,10 @@ class CustomDataset(Dataset):
             handwriting_img[handwriting_img > background_threshold] = 255
 
             handwriting_img = cv2.cvtColor(handwriting_img, cv2.COLOR_GRAY2RGB)
-            # random_size = np.random.randint(64, 128)
-            random_size = 128
+            # TO DO : match background size
+            random_size_max = background_img.shape[0] // 4
+            random_size = np.random.randint(random_size_max//2, random_size_max)
+            
             handwriting_img = cv2.resize(handwriting_img, dsize=(random_size, random_size), interpolation=cv2.INTER_AREA)
             handwriting_img_mask = np.zeros((random_size,random_size,1)).astype(np.uint8)
             
@@ -101,12 +105,26 @@ class CustomDataset(Dataset):
                     break
             
         # Draw Check image
+        rand_pos_idx = np.random.randint(5)
+        nx,ny = self.num_pos[img_file_name][rand_pos_idx]
+        
+        nx,ny = int(nx * background_img.shape[1] / ori_w) , int(ny * background_img.shape[0] / ori_h)
+        
         rand_check_idx = np.random.randint(len(self.check_images))
         check_img = cv2.imread(os.path.join(self.check_path, self.check_images[rand_check_idx]))
+        
+        # TO DO : match background size
+        # resize check_img
+        # if num is 1 -> too narrow
+        random_size_max = background_img.shape[0] // 8
+        random_size_max = random_size_max if random_size_max % 2 == 0 else random_size_max + 1
+        if rand_pos_idx == 0 :
+            random_size = nx if nx % 2 == 0 else nx + 1
+        else :
+            random_size = np.random.choice(range(random_size_max-20,random_size_max,2),1)[0]
 
-        # proper size 76
-        check_img = cv2.resize(check_img,(76,76))
-        check_img_mask = np.zeros((76,76,1)).astype(np.uint8)
+        check_img = cv2.resize(check_img,(random_size,random_size))
+        check_img_mask = np.zeros((random_size,random_size,1)).astype(np.uint8)
         
         x,y,_ = np.where(check_img < 200)
         for x_,y_ in zip(x,y) :
@@ -118,12 +136,9 @@ class CustomDataset(Dataset):
             check_img = trasnformed['image']
             check_img_mask = trasnformed['mask']
                 
-        
-        rand_pos_idx = np.random.randint(5)
-        nx,ny = self.num_pos[img_file_name][rand_pos_idx]
 
-        # pad = size // 2
-        cv2.copyTo(check_img,check_img_mask,background_img[ny-38:ny+38,nx-38:nx+38])
+        pad = random_size // 2
+        cv2.copyTo(check_img,check_img_mask,background_img[ny-pad:ny+pad,nx-pad:nx+pad])
         # background_img[ny-38:ny+38,nx-38:nx+38][check_img < 200] = check_img[check_img < 200]
 
         return background_img, seg_img
@@ -135,18 +150,30 @@ if __name__ == "__main__":
     check_dir = '/opt/ml/final-project-level3-cv-05/check_img'
     num_pos_json = '/opt/ml/final-project-level3-cv-05/pos.json'
 
+    background_transform = A.Compose([
+        A.Resize(512,512,cv2.INTER_AREA),
+        A.RandomCrop(512,512),
+        A.RandomBrightnessContrast(p=0.5),
+    ])
+    handwriting_transform = None
+    
     np.random.seed(42)
-
-    dataset = CustomDataset(background_dir, handwriting_dir, check_dir, num_pos_json, segmentation=True)
+    dataset = CustomDataset(background_dir, handwriting_dir, check_dir, num_pos_json, num_handwriting = 5, 
+                            background_transform = background_transform,
+                            handwriting_transform = handwriting_transform,
+                            segmentation=True)    
     ori_img, hand_img, seg_img = dataset[0]
-    cv2.imwrite(f'/opt/ml/final-project-level3-cv-05/ori_img1.jpg', ori_img)
-    cv2.imwrite(f'/opt/ml/final-project-level3-cv-05/hand_img1.jpg', hand_img)
-    cv2.imwrite(f'/opt/ml/final-project-level3-cv-05/seg_img1.png', seg_img)
+    cv2.imwrite(f'loader_test/ori_img1.jpg', np.array(ori_img.permute(1,2,0)))
+    cv2.imwrite(f'loader_test/hand_img1.jpg', np.array(hand_img.permute(1,2,0)))
+    cv2.imwrite(f'loader_test/seg_img1.png', np.array(seg_img.permute(1,2,0)))
 
-    dataset = CustomDataset(background_dir, handwriting_dir, check_dir, num_pos_json, segmentation=False)
+    dataset = CustomDataset(background_dir, handwriting_dir, check_dir, num_pos_json, num_handwriting = 5, 
+                            background_transform = background_transform,
+                            handwriting_transform = handwriting_transform,
+                            segmentation=False)    
     ori_img, hand_img = dataset[0]
-    cv2.imwrite(f'/opt/ml/final-project-level3-cv-05/ori_img2.jpg', ori_img)
-    cv2.imwrite(f'/opt/ml/final-project-level3-cv-05/hand_img2.jpg', hand_img)
+    cv2.imwrite(f'loader_test/ori_img2.jpg', np.array(ori_img.permute(1,2,0)))
+    cv2.imwrite(f'loader_test/hand_img2.jpg', np.array(hand_img.permute(1,2,0)))
 
     from torch.utils.data import DataLoader
     from tqdm import tqdm
