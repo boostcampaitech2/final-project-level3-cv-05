@@ -7,6 +7,8 @@ import pandas as pd
 import csv
 import base64
 
+import fix_detection
+
 #streamlit run app.py --server.address=127.0.0.1
 #이렇게 하면 브라우저가 Local로 띄어짐.
 
@@ -79,13 +81,13 @@ def GAN_image(image):
 
 
 def streamlit_run():
-	result_df = load_data()
+	#result_df = load_data()
 	button_press = 0
 	#button_press = len(result_df)
 
 	st.title("Math wrong answer editor")
 
-	menu = ["MakeImage","MakePDF","Answer","About"]
+	menu = ["MakeImage","MakePDF","Answer","Crop","About"]
 	choice = st.sidebar.selectbox("Menu",menu)
 
 	if choice == "MakeImage":
@@ -160,9 +162,11 @@ def streamlit_run():
 	elif choice == "Answer":
 		st.text("Show")
 		# st.subheader("Input name to find answer")
-
 		# df = pd.read_csv("answer.csv")
 		# st.write(df)
+	elif choice == "Crop":
+		fix_detection.fix_detection()
+
 	else:
 		st.subheader("About")
 		st.text("수학 오답 노트 편집기")
