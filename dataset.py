@@ -46,7 +46,6 @@ class CustomDataset(Dataset):
         hand_img = self.norm_tensor(image=hand_img)['image']
         
         if self.segmentation:
-            seg_img = self.norm_tensor(image=seg_img)['image']
             return ori_img, hand_img, seg_img
         else:
             return ori_img, hand_img
@@ -170,7 +169,7 @@ if __name__ == "__main__":
     ori_img, hand_img, seg_img = dataset[0]
     cv2.imwrite(f'loader_test/ori_img1.jpg', np.array(ori_img.permute(1,2,0)))
     cv2.imwrite(f'loader_test/hand_img1.jpg', np.array(hand_img.permute(1,2,0)))
-    cv2.imwrite(f'loader_test/seg_img1.png', np.array(seg_img.permute(1,2,0)))
+    cv2.imwrite(f'loader_test/seg_img1.png', np.array(seg_img))
 
     dataset = CustomDataset(background_dir, handwriting_dir, check_dir, num_pos_json, num_handwriting = 5, 
                             background_transform = background_transform,
