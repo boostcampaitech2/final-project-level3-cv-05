@@ -26,6 +26,9 @@ def crop_problem(pdf_path: str) :
 
     pos_json = dict()
     pdf_files = sorted(os.listdir(pdf_path))
+    crop_images = []
+    num_pos = []
+    
     for pdf_file in tqdm(pdf_files) :
         images = convert_from_path(osp.join(pdf_path,pdf_file))
         img_w,img_h = images[0].size
@@ -73,9 +76,6 @@ def crop_problem(pdf_path: str) :
                                 x,y = scale(obj.bbox[0],obj.bbox[3],img_h,img_w,h,w)
                                 LT[idx].append([x-pad,y-pad])
 
-
-        crop_images = []
-        num_pos = []
         for page , image in enumerate(images) :
 
             np_img = np.array(image)
@@ -99,11 +99,10 @@ def crop_problem(pdf_path: str) :
                 num_pos.append(tmp)
                 crop_images.append(np_img[y1:y2,x1:x2,:].copy())
 
-        for img,pos in zip(crop_images,num_pos) :
-            name = np.random.randint(int(1e6))
-
-            cv2.imwrite(f'background/{name}.png',img[:,:,::-1])
-            pos_json[f'{name}.png'] = pos
+    for idx,(img,pos) in enumerate(zip(crop_images,num_pos)) :
+        name = '%05d' % idx 
+        cv2.imwrite(f'background/{name}.png',img[:,:,::-1])
+        pos_json[f'{name}.png'] = pos
 
     with open("pos.json","w") as f : 
         f.write(json.dumps(pos_json, indent=4))
