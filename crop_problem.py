@@ -19,19 +19,17 @@ def crop_problem(pdf_path: str) :
     
     def scale(x,y,ori_h,ori_w,h,w) :
         return int(x * ori_w / w) , ori_h - int(y * ori_h / h)
-    
+
     if not osp.isdir('background') :
-        os.mkdir('background')
+        os.mkdir('background') 
 
-    # save num_pos 1,2,3,4,5
-    num_pos_json = dict()
 
-    pdf_files = os.listdir(pdf_path)
-    # Find problem pos and num pos in pdf 
+    pos_json = dict()
+    pdf_files = sorted(os.listdir(pdf_path))
     for pdf_file in tqdm(pdf_files) :
         images = convert_from_path(osp.join(pdf_path,pdf_file))
         img_w,img_h = images[0].size
-    
+
         fp = open(osp.join(pdf_path,pdf_file),'rb')
         rsrcmgr = PDFResourceManager()
         laparams = LAParams()
@@ -39,7 +37,7 @@ def crop_problem(pdf_path: str) :
         interpreter = PDFPageInterpreter(rsrcmgr, device)
         pages = PDFPage.get_pages(fp)
 
-        pad = 30
+        pad = 40
         LT,RB = [[] for _ in range(len(images))],[[] for _ in range(len(images))]
         nums  = [[] for _ in range(len(images))]
 
@@ -75,41 +73,40 @@ def crop_problem(pdf_path: str) :
                                 x,y = scale(obj.bbox[0],obj.bbox[3],img_h,img_w,h,w)
                                 LT[idx].append([x-pad,y-pad])
 
-    crop_images = []
-    num_pos = []
-    # Problem Crop and save num_pos
-    for page , image in enumerate(images) :
 
-        np_img = np.array(image)
+        crop_images = []
+        num_pos = []
+        for page , image in enumerate(images) :
 
-        for idx, ((x1,y1),(x2,y2)) in enumerate(zip(LT[page],RB[page])) :
-            if x1 > x2 or y1 > y2 or x2 -x1 > 1169 :
-                continue
-                
-            h,w = y2-y1,x2-x1
-            tmp = []
-            isWrong = False
-            for x,y in nums[page][5*idx:5*idx+5] :
-                x -= x1
-                y -= y1
-                # wrong pos
-                if x < 0 or y < 0 : 
-                    isWrong = True
-                    break
-                tmp.append([x,y])
-            if isWrong :
-                continue
-            num_pos.append(tmp)
-            crop_images.append(np_img[y1:y2,x1:x2,:].copy())
+            np_img = np.array(image)
 
-    for img,pos in zip(crop_images,num_pos) :
-        name = np.random.randint(int(1e6))
-        
-        cv2.imwrite(f'background/{name}.png',img[:,:,::-1])
-        num_pos_json[f'{name}.png'] = pos
-        
+            for idx, ((x1,y1),(x2,y2)) in enumerate(zip(LT[page],RB[page])) :
+                if x1 > x2 or y1 > y2 or x2 -x1 > 1169 :
+                    continue
+
+                h,w = y2-y1,x2-x1
+                tmp = []
+                isWrong = False
+                for x,y in nums[page][5*idx:5*idx+5] :
+                    x -= x1
+                    y -= y1
+                    tmp.append([x,y])
+                    if x < 0 or y < 0 :
+                        isZero = True
+                        break
+                if isWrong : 
+                    continue
+                num_pos.append(tmp)
+                crop_images.append(np_img[y1:y2,x1:x2,:].copy())
+
+        for img,pos in zip(crop_images,num_pos) :
+            name = np.random.randint(int(1e6))
+
+            cv2.imwrite(f'background/{name}.png',img[:,:,::-1])
+            pos_json[f'{name}.png'] = pos
+
     with open("pos.json","w") as f : 
-        json.dump(num_pos_json,f)
+        f.write(json.dumps(num_pos_json, indent=4))
 
             
 def ori_handwriting(hand_path: str) :
