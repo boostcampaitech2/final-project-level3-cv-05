@@ -106,7 +106,7 @@ def crop_problem(pdf_path: str) :
             pos_json[f'{name}.png'] = pos
 
     with open("pos.json","w") as f : 
-        f.write(json.dumps(num_pos_json, indent=4))
+        f.write(json.dumps(pos_json, indent=4))
 
             
 def ori_handwriting(hand_path: str) :
