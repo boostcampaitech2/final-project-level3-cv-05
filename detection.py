@@ -91,7 +91,6 @@ def get_crop_location(model, img, uncorrect=True, score_thresh=0.5):
 
 def draw_from_crop_locations(img, crop_locations, color=(255,0,0), thickness=3):
     new_img = deepcopy(img)
-    new_img = cv2.cvtColor(new_img, cv2.COLOR_BGR2RGB)
     for x1,y1,x2,y2 in crop_locations:
         new_img = cv2.rectangle(new_img, (x1,y1), (x2,y2), color, thickness)
     return new_img

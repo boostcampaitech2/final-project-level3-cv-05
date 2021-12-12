@@ -8,8 +8,7 @@ from pdf2image import convert_from_path
 import re
 import numpy as np
 import cv2
-
-import time
+import json
 import os
 import os.path as osp
 from tqdm import tqdm
@@ -21,11 +20,15 @@ def crop_problem(pdf_path: str) :
     def scale(x,y,ori_h,ori_w,h,w) :
         return int(x * ori_w / w) , ori_h - int(y * ori_h / h)
 
-    pdf_files = os.listdir(pdf_path)
+    if not osp.isdir('background') :
+        os.mkdir('background') 
+
+
+    pos_json = dict()
+    pdf_files = sorted(os.listdir(pdf_path))
     for pdf_file in tqdm(pdf_files) :
         images = convert_from_path(osp.join(pdf_path,pdf_file))
         img_w,img_h = images[0].size
-
 
         fp = open(osp.join(pdf_path,pdf_file),'rb')
         rsrcmgr = PDFResourceManager()
@@ -34,36 +37,76 @@ def crop_problem(pdf_path: str) :
         interpreter = PDFPageInterpreter(rsrcmgr, device)
         pages = PDFPage.get_pages(fp)
 
-        cnt = 1
-        pad = 30
+        pad = 40
         LT,RB = [[] for _ in range(len(images))],[[] for _ in range(len(images))]
+        nums  = [[] for _ in range(len(images))]
+
+        numQ = ""
         for idx, page in enumerate(pages):
             interpreter.process_page(page)
             layout = device.get_result()
-            for lobj in layout:
+            for lobjs in layout:
                 w,h = layout.bbox[2], layout.bbox[3]
-                if isinstance(lobj, LTTextBox) :
-                    text = lobj.get_text()
-                    if '⑤' in text :
-                        x,y = scale(lobj.bbox[2],lobj.bbox[1],img_h,img_w,h,w)
-                        x = 1160 if x < 1169 else 2150
-                        RB[idx].append([x,y+500])
-                    if re.search('^\d+[.]',text) is not None :
-                        x,y = scale(lobj.bbox[0],lobj.bbox[3],img_h,img_w,h,w)
-                        LT[idx].append([x-pad,y-pad])
+                if isinstance(lobjs, LTTextBox) :
+                    for lobj in lobjs :
+                        for obj in lobj :
+                            # assert type(obj) == LTChar
+                            text = obj.get_text()
+                            if len(numQ) != 2 :
+                                numQ += text
+                            else :
+                                numQ = numQ[1] + text
+
+                            if '①' in text or '②' in text or '③' in text or '④' in text :
+                                x1,y1 = scale(obj.bbox[0],obj.bbox[3],img_h,img_w,h,w)
+                                x2,y2 = scale(obj.bbox[2],obj.bbox[1],img_h,img_w,h,w)
+                                nums[idx].append([(x1+x2)//2,(y1+y2)//2])
+
+                            elif '⑤' in text :
+                                x1,y1 = scale(obj.bbox[0],obj.bbox[3],img_h,img_w,h,w)
+                                x2,y2 = scale(obj.bbox[2],obj.bbox[1],img_h,img_w,h,w)
+                                nums[idx].append([(x1+x2)//2,(y1+y2)//2])
+
+                                x2 = 1160 if x2 < 1169 else 2150
+                                RB[idx].append([x2,y2+pad])
+                            elif re.search('^\d+[.]',numQ) is not None :
+                                x,y = scale(obj.bbox[0],obj.bbox[3],img_h,img_w,h,w)
+                                LT[idx].append([x-pad,y-pad])
+
 
         crop_images = []
-
+        num_pos = []
         for page , image in enumerate(images) :
-            for (x1,y1),(x2,y2) in zip(LT[page],RB[page]) :
-                # wrong image pass
-                if x1 > x2 or y1 > y2 or x2 - x1 > 1000 :
-                    continue
-                crop_images.append(image.crop((x1,y1,x2,y2)))
 
-        os.makedirs('background',exist_ok=True)
-        for img in crop_images :
-            img.save(f'background/{np.random.randint(int(1e6))}.png')
+            np_img = np.array(image)
+
+            for idx, ((x1,y1),(x2,y2)) in enumerate(zip(LT[page],RB[page])) :
+                if x1 > x2 or y1 > y2 or x2 -x1 > 1169 :
+                    continue
+
+                h,w = y2-y1,x2-x1
+                tmp = []
+                isWrong = False
+                for x,y in nums[page][5*idx:5*idx+5] :
+                    x -= x1
+                    y -= y1
+                    tmp.append([x,y])
+                    if x < 0 or y < 0 :
+                        isZero = True
+                        break
+                if isWrong : 
+                    continue
+                num_pos.append(tmp)
+                crop_images.append(np_img[y1:y2,x1:x2,:].copy())
+
+        for img,pos in zip(crop_images,num_pos) :
+            name = np.random.randint(int(1e6))
+
+            cv2.imwrite(f'background/{name}.png',img[:,:,::-1])
+            pos_json[f'{name}.png'] = pos
+
+    with open("pos.json","w") as f : 
+        f.write(json.dumps(pos_json, indent=4))
 
             
 def ori_handwriting(hand_path: str) :
