@@ -7,9 +7,13 @@ import pandas as pd
 import csv
 import base64
 
+import numpy as np
+import torch
+from detection import load_model, get_crop_location, draw_from_crop_locations, crop_from_crop_locations
+import cv2
+
 #streamlit run app.py --server.address=127.0.0.1
 #이렇게 하면 브라우저가 Local로 띄워짐.
-
 
 # Fxn
 @st.cache
@@ -75,9 +79,18 @@ def create_download_link(val, filename):
 
 
 #Object Detection
+@st.cache
 def OD_image(image):
-	convert = image.convert("LA")
-	return convert
+	detector = load_model(cfg_path = "/opt/ml/project/mmdetection/work_dirs/yolov3_handwriting_phoaug/yolov3.py", 
+					ckpt_path = "/opt/ml/project/mmdetection/work_dirs/yolov3_handwriting_phoaug/latest.pth")
+	device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+	detector = detector.to(device)
+	if not isinstance(image, np.ndarray):
+		image = np.array(image)
+	locations = get_crop_location(detector, image)   # [[x1,y1,x2,y2], [x1,y1,x2,y2], ...]
+	drawed_img = draw_from_crop_locations(image, locations)
+	croped_img = crop_from_crop_locations(image, locations)
+	return drawed_img, croped_img
 
 
 #GAN
@@ -87,6 +100,7 @@ def GAN_image(image):
 
 
 def streamlit_run():
+
 	result_df = load_data()
 	button_press = 0
 
@@ -106,7 +120,7 @@ def streamlit_run():
 			st.subheader("Before")
 			st.image(img, use_column_width = True)
 
-			od_img = OD_image(img)
+			od_img, crop_images = OD_image(img)
 			gan_img = GAN_image(od_img)
 			after_img = GAN_image(gan_img)
 
