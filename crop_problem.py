@@ -70,7 +70,7 @@ def crop_problem(pdf_path: str) :
                                 nums[idx].append([(x1+x2)//2,(y1+y2)//2])
 
                                 x2 = 1160 if x2 < 1169 else 2150
-                                RB[idx].append([x2,y2+500])
+                                RB[idx].append([x2,y2+pad])
                             elif re.search('^\d+[.]',numQ) is not None :
                                 x,y = scale(obj.bbox[0],obj.bbox[3],img_h,img_w,h,w)
                                 LT[idx].append([x-pad,y-pad])
