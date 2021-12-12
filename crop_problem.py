@@ -92,7 +92,7 @@ def crop_problem(pdf_path: str) :
                     y -= y1
                     tmp.append([x,y])
                     if x < 0 or y < 0 :
-                        isZero = True
+                        isWrong = True
                         break
                 if isWrong : 
                     continue
