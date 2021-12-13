@@ -40,7 +40,7 @@ def crop_problem(pdf_path: str) :
         interpreter = PDFPageInterpreter(rsrcmgr, device)
         pages = PDFPage.get_pages(fp)
 
-        pad = 40
+        LT_pad,RB_pad = 40,40
         LT,RB = [[] for _ in range(len(images))],[[] for _ in range(len(images))]
         nums  = [[] for _ in range(len(images))]
 
@@ -71,10 +71,11 @@ def crop_problem(pdf_path: str) :
                                 nums[idx].append([(x1+x2)//2,(y1+y2)//2])
 
                                 x2 = 1160 if x2 < 1169 else 2150
-                                RB[idx].append([x2,y2+pad])
+                                RB[idx].append([x2,y2+RB_pad])
                             elif re.search('^\d+[.]',numQ) is not None :
                                 x,y = scale(obj.bbox[0],obj.bbox[3],img_h,img_w,h,w)
-                                LT[idx].append([x-pad,y-pad])
+                                LT[idx].append([x-LT_pad,y-LT_pad])
+
 
         for page , image in enumerate(images) :
 
@@ -90,10 +91,10 @@ def crop_problem(pdf_path: str) :
                 for x,y in nums[page][5*idx:5*idx+5] :
                     x -= x1
                     y -= y1
-                    tmp.append([x,y])
-                    if x < 0 or y < 0 :
+                    if x < 0 or y < 0 or x > w or y > h :
                         isWrong = True
                         break
+                    tmp.append([x,y])
                 if isWrong : 
                     continue
                 num_pos.append(tmp)
