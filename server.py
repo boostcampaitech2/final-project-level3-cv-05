@@ -219,7 +219,8 @@ def streamlit_run():
 
                             print(x,y,w,h)
                             area = (x,y,x+w,y+h)
-                            #To Do : Ratio 
+                            #To Do : Ratio
+                             
                             cropped_img = img.crop(area)
                             crop_images.append(cropped_img)
 
@@ -241,26 +242,27 @@ def streamlit_run():
         if st.session_state.GAN_button:
             gan_img = GAN_image(crop_images)
 
-            st.subheader("Check Final Image & Save")
-        
+            st.subheader("Check Final Image & Save") #Show Clear image
             if "idx" not in st.session_state:
                 st.session_state.idx = 0
 
-            if st.button("Next"):
+            before, next, save = st.columns(3)
+
+            if next.button("Next"):
                 if st.session_state.idx <= len(gan_img)-2:
                     st.session_state.idx += 1
                 else:
                     st.session_state.idx = len(gan_img)-1
                     st.warning("It's last problem")
-        
-            if st.button("Before"):
+
+            if before.button("Before"):
                 if st.session_state.idx >= 1:
                     st.session_state.idx -= 1
                 else:
                     st.session_state.idx = 0
                     st.warning("It's first problem")
 
-            if st.button("Save"):
+            if save.button("Save"):
                 if os.path.isdir("save")==False:
                     os.mkdir("save")
                 
