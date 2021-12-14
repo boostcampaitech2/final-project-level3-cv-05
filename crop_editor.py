@@ -50,7 +50,7 @@ def crop_editor(image):
     #Detection 부분 미세 조정 (transform)
     #Detection 못해도 사용자가 추가 가능 (rect)
     # Specify canvas parameters in application
-    drawing_mode = st.sidebar.selectbox(
+    drawing_mode = st.selectbox(
     "Drawing tool:", ("rect", "transform"))
     bg_image = image
     #bg_image = st.sidebar.file_uploader("Background image:", type=["png", "jpg"])
@@ -63,8 +63,8 @@ def crop_editor(image):
         background_color= "#eee",
         background_image=Image.open(bg_image) if bg_image else None,
         update_streamlit= True,
-        height= 500,
-        width = 500,
+        height= 1000,
+        width = 1000,
         drawing_mode=drawing_mode,
         #initial_drawing = json_file,
         key = "canvas"

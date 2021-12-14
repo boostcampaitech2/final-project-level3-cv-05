@@ -176,17 +176,16 @@ def streamlit_run():
     if choice == "All":
         st.header("All part")
         st.subheader("1. Upload your problem images")
-        
+
+        #TO DO : Get New Data, then reset cache
         image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
 
         if image_file is not None:
-			#Get Image
-            img = load_image(image_file)
-            #TO DO : convert RGB 
+            img = load_image(image_file) #Get Image
+            img = img.convert('RGB') #RGBA -> RGB
             st.image(img)
         
         st.subheader("2. Check wrong image, and you can edit")
-
         
         if 'OD_button' not in st.session_state:
             st.session_state.OD_button = False
@@ -201,38 +200,37 @@ def streamlit_run():
                 #Show Image Crop
                 st.subheader("Crop Result")
                 st.image(od_img)
-        #Use Crop Editor
-        flag_edit = st.checkbox("Do you need to fix?")
-        if flag_edit:
-            crop_editor.crop_editor(image_file) 
+            #Use Crop Editor
+            flag_edit = st.checkbox("Do you need to fix?")
+            if flag_edit:
+                crop_editor.crop_editor(image_file) 
 
-            if(os.path.isfile("./data.json")):
-                crop_images = []
-                i = 0
-                with open("data.json") as json_file:
-                    json_data = json.load(json_file)
-                    json_object = json_data["objects"]
+                if(os.path.isfile("./data.json")):
+                    crop_images = []
+                    with open("data.json") as json_file:
+                        json_data = json.load(json_file)
+                        json_object = json_data["objects"]
 
-                    for ob in json_object:
-                        x = ob["left"]
-                        y = ob["top"]
-                        w = ob["width"]
-                        h = ob["height"]
+                        for ob in json_object:
+                            x = ob["left"]
+                            y = ob["top"]
+                            w = ob["width"]
+                            h = ob["height"]
 
-                        print(x,y,w,h)
-                        area = (x,y,x+w,y+h)
-                        #To Do : Ratio 
-                        cropped_img = img.crop(area)
-                        crop_images.append(cropped_img)
+                            print(x,y,w,h)
+                            area = (x,y,x+w,y+h)
+                            #To Do : Ratio 
+                            cropped_img = img.crop(area)
+                            crop_images.append(cropped_img)
 
-        if "OD_show_button" not in st.session_state:
-            st.session_state.OD_show_button = False
-        
-        if st.button("Show"):
-            st.session_state.OD_show_button = True
-        
-        if st.session_state.OD_show_button:
-            st.image(crop_images) 
+            if "OD_show_button" not in st.session_state:
+                st.session_state.OD_show_button = False
+            
+            if st.button("Show"):
+                st.session_state.OD_show_button = True
+            
+            if st.session_state.OD_show_button:
+                st.image(crop_images) 
 
         st.subheader("3. Clear handwriting")
 
@@ -277,20 +275,23 @@ def streamlit_run():
         export_as_pdf = st.button("Export Report")
 
         if export_as_pdf:
-            pdf = FPDF()
+            if os.path.isdir("save"):
+                pdf = FPDF()
 
-            w=120
-            h=80
+                w=120
+                h=100
 
-            for img in os.listdir("save"):
-                pdf.add_page()
-                pdf.image("save/"+img,x=50,y=100,w=w,h=h)
+                for img in os.listdir("save"):
+                    pdf.add_page()
+                    pdf.image("save/"+img,x=0,y=10,w=w,h=h)
 
-            pdf.set_font("Arial","B",16)
+                pdf.set_font("Arial","B",16)
 
-            html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
+                html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
 
-            st.markdown(html, unsafe_allow_html = True)
+                st.markdown(html, unsafe_allow_html = True)
+            else:
+                st.error("plz, save image")
     elif choice == "MakeImage":
         st.subheader("Upload your problem images")
         image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
@@ -325,25 +326,7 @@ def streamlit_run():
             #saving file
             if st.button("Save"):
                 save_uploaded_file(image_file)
-                save_after_file(after_img,image_file.name)
-
-    elif choice == "MakePDF":
-        #PDF 구현
-        report_image = st.text_input("Report Text")
-
-        export_as_pdf = st.button("Export Report")
-
-        if export_as_pdf:
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.set_font("Arial","B",16)
-            pdf.cell(40,10,report_image)
-
-            html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
-
-            st.markdown(html, unsafe_allow_html = True)
-
-        #Save pdf
+                save_after_file(gan_img,image_file.name)
     elif choice == "Answer":
         st.text("Show")
     else:

@@ -1,0 +1,24 @@
+{
+    "version": "4.4.0",
+    "objects": [
+        {
+            "type": "rect",
+            "fill": "rgba(255, 165, 0, 0.3)",
+            "stroke": "#000",
+            "left": 88,
+            "top": 116,
+            "width": 405,
+            "height": 154
+        },
+        {
+            "type": "rect",
+            "fill": "rgba(255, 165, 0, 0.3)",
+            "stroke": "#000",
+            "left": 514,
+            "top": 127,
+            "width": 398,
+            "height": 134
+        }
+    ],
+    "background": "#eee"
+}
