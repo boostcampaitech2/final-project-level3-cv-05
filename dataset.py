@@ -8,12 +8,13 @@ import albumentations as A
 import albumentations.pytorch
 
 class CustomDataset(Dataset):
-    def __init__(self, background_dir, handwriting_dir, check_dir, num_pos_json, background_transform=None, 
+    def __init__(self, background_dir, handwriting_dir, check_dir, num_pos_json, mark_dir, background_transform=None, 
                  handwriting_transform=None, num_handwriting=15, segmentation=False, overlap=False):
 
         self.background_path = background_dir
         self.handwriting_path = handwriting_dir
         self.check_path = check_dir
+        self.mark_path = mark_dir
         
         self.num_handwriting = num_handwriting
         self.background_transform = background_transform
@@ -27,6 +28,7 @@ class CustomDataset(Dataset):
         self.background_images = os.listdir(self.background_path)
         self.handwriting_images = os.listdir(self.handwriting_path)
         self.check_images = os.listdir(self.check_path)
+        self.mark_images = os.listdir(self.mark_path)
         
     def __len__(self):
         return len(self.background_images)
@@ -37,8 +39,9 @@ class CustomDataset(Dataset):
         
         hand_img = deepcopy(ori_img)
         hand_img, seg_img = self.insert_handwriting_math(hand_img)
+        hand_img, seg_img = self.insert_handwriting_mark(hand_img, seg_img)
         hand_img, seg_img = self.insert_handwriting_check(hand_img, seg_img, self.background_images[idx])
-        
+
         if self.background_transform : 
             ori_img  = self.background_transform(image=ori_img)['image']
             hand_img = self.background_transform(image=hand_img)['image']
@@ -133,12 +136,36 @@ class CustomDataset(Dataset):
                        
         return background_img, seg_img
     
+    def insert_handwriting_mark(self, background_img, seg_img):
+        # Draw Mark image
+        rand_mark_idx = np.random.randint(len(self.mark_images))
+        mark_img = cv2.imread(os.path.join(self.mark_path, self.mark_images[rand_mark_idx]))
+        mark_img = cv2.cvtColor(mark_img, cv2.COLOR_BGR2RGB)
+        
+        random_size = np.random.choice(range(50,90,2),1)[0]
+        mark_img = cv2.resize(mark_img,(random_size,random_size))
+        mark_img_mask = np.zeros((random_size,random_size,1)).astype(np.uint8)
+        mark_img_mask[mark_img[:,:,2] < 200] = 255
+        
+        if self.handwriting_transform :
+            trasnformed = self.handwriting_transform(image=mark_img,mask=mark_img_mask)
+            mark_img = trasnformed['image']
+            mark_img_mask = trasnformed['mask']
+
+        cv2.copyTo(mark_img,mark_img_mask,background_img[20:20+random_size,:random_size])
+        if self.segmentation:
+            cv2.copyTo(np.full(mark_img.shape[:2],3).astype(np.uint8),mark_img_mask,seg_img[20:20+random_size,:random_size])
+                       
+        return background_img, seg_img
+    
+        
+    
 if __name__ == "__main__":
     background_dir = 'background'
     handwriting_dir = 'ori_hand'
     check_dir = 'check_img'
     num_pos_json = 'pos.json'
-    
+    mark_dir = 'mark_img'
     # background_transform = A.Compose([
     #     A.Resize(512,512,cv2.INTER_AREA),
     #     A.RandomCrop(512,512),
@@ -150,7 +177,8 @@ if __name__ == "__main__":
     handwriting_transform = None
     
     np.random.seed(42)
-    dataset = CustomDataset(background_dir, handwriting_dir, check_dir, num_pos_json, num_handwriting = 5, 
+    dataset = CustomDataset(background_dir, handwriting_dir, check_dir, num_pos_json, 
+                            mark_dir, num_handwriting = 5, 
                             background_transform = background_transform,
                             handwriting_transform = handwriting_transform,
                             segmentation=True)    
