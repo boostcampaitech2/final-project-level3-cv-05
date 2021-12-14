@@ -5,6 +5,7 @@ import streamlit as st
 from streamlit_drawable_canvas import st_canvas
 import json
 import copy
+import numpy as np
 
 #pip install streamlit-drawable-canvas 
 #설치해야함.
@@ -45,14 +46,15 @@ def crop_editor(image):
     #file open
     # with open("data.json","r") as f:
     #     json_file = json.load(f)
-    
+
 
     #Detection 부분 미세 조정 (transform)
     #Detection 못해도 사용자가 추가 가능 (rect)
     # Specify canvas parameters in application
     drawing_mode = st.selectbox(
     "Drawing tool:", ("rect", "transform"))
-    bg_image = image
+    bg_image = Image.open(image) if image else None
+    shape = np.shape(bg_image)
     #bg_image = st.sidebar.file_uploader("Background image:", type=["png", "jpg"])
 
     # Create a canvas component
@@ -61,10 +63,10 @@ def crop_editor(image):
         stroke_width= 1,
         stroke_color= "#000",
         background_color= "#eee",
-        background_image=Image.open(bg_image) if bg_image else None,
+        background_image= bg_image,
         update_streamlit= True,
-        height= 1000,
-        width = 1000,
+        height= shape[0], # to set ratio
+        width = shape[1],
         drawing_mode=drawing_mode,
         #initial_drawing = json_file,
         key = "canvas"

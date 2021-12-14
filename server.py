@@ -217,12 +217,9 @@ def streamlit_run():
                             w = ob["width"]
                             h = ob["height"]
 
-                            print(x,y,w,h)
                             area = (x,y,x+w,y+h)
-                            #To Do : Ratio
-                             
                             cropped_img = img.crop(area)
-                            crop_images.append(cropped_img)
+                            crop_images.append(np.array(cropped_img))
 
             if "OD_show_button" not in st.session_state:
                 st.session_state.OD_show_button = False
