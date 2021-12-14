@@ -38,7 +38,7 @@ def make_detection_canvas(points):
     
 
 
-def crop_editor():
+def crop_editor(image):
     #Get Detection point (x,y,width,height)
     points = [(0,274,152,93),(305,286,110,116)]
     json_file = make_detection_canvas(points)
@@ -52,7 +52,8 @@ def crop_editor():
     # Specify canvas parameters in application
     drawing_mode = st.sidebar.selectbox(
     "Drawing tool:", ("rect", "transform"))
-    bg_image = st.sidebar.file_uploader("Background image:", type=["png", "jpg"])
+    bg_image = image
+    #bg_image = st.sidebar.file_uploader("Background image:", type=["png", "jpg"])
 
     # Create a canvas component
     canvas_result = st_canvas(
@@ -65,7 +66,7 @@ def crop_editor():
         height= 500,
         width = 500,
         drawing_mode=drawing_mode,
-        initial_drawing = json_file,
+        #initial_drawing = json_file,
         key = "canvas"
     )
 

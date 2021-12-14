@@ -19,8 +19,13 @@ import torchvision.transforms as transforms
 import cv2
 import numpy as np
 
+import json
+
 #streamlit run server.py --server.address=127.0.0.1
 #이렇게 하면 브라우저가 Local로 띄워짐.
+
+#wide
+st.set_page_config(layout="wide")
 
 # Fxn
 @st.cache
@@ -160,15 +165,133 @@ def GAN_image(images):
 
 
 def streamlit_run():
-    result_df = load_data()
+    #result_df = load_data()
     button_press = 0
 
     st.title("Math wrong answer editor")
 
-    menu = ["MakeImage","MakePDF","Answer","Crop","About"]
+    menu = ["All","MakeImage","MakePDF","Answer","About"]
     choice = st.sidebar.selectbox("Menu",menu)
 
-    if choice == "MakeImage":
+    if choice == "All":
+        st.header("All part")
+        st.subheader("1. Upload your problem images")
+        
+        image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
+
+        if image_file is not None:
+			#Get Image
+            img = load_image(image_file)
+            #TO DO : convert RGB 
+            st.image(img)
+        
+        st.subheader("2. Check wrong image, and you can edit")
+
+        
+        if 'OD_button' not in st.session_state:
+            st.session_state.OD_button = False
+        if st.button("Crop"):
+            st.session_state.OD_button = True
+        if st.session_state.OD_button:
+            try:
+                od_img, crop_images = OD_image(img)
+            except UnboundLocalError:
+                st.error("Plz, input image")
+            else:
+                #Show Image Crop
+                st.subheader("Crop Result")
+                st.image(od_img)
+        #Use Crop Editor
+        flag_edit = st.checkbox("Do you need to fix?")
+        if flag_edit:
+            crop_editor.crop_editor(image_file) 
+
+            if(os.path.isfile("./data.json")):
+                crop_images = []
+                i = 0
+                with open("data.json") as json_file:
+                    json_data = json.load(json_file)
+                    json_object = json_data["objects"]
+
+                    for ob in json_object:
+                        x = ob["left"]
+                        y = ob["top"]
+                        w = ob["width"]
+                        h = ob["height"]
+
+                        print(x,y,w,h)
+                        area = (x,y,x+w,y+h)
+                        #To Do : Ratio 
+                        cropped_img = img.crop(area)
+                        crop_images.append(cropped_img)
+
+        if "OD_show_button" not in st.session_state:
+            st.session_state.OD_show_button = False
+        
+        if st.button("Show"):
+            st.session_state.OD_show_button = True
+        
+        if st.session_state.OD_show_button:
+            st.image(crop_images) 
+
+        st.subheader("3. Clear handwriting")
+
+        if 'GAN_button' not in st.session_state:
+            st.session_state.GAN_button = False
+        if st.button("Clear"):
+            st.session_state.GAN_button = True
+        if st.session_state.GAN_button:
+            gan_img = GAN_image(crop_images)
+
+            st.subheader("Check Final Image & Save")
+        
+            if "idx" not in st.session_state:
+                st.session_state.idx = 0
+
+            if st.button("Next"):
+                if st.session_state.idx <= len(gan_img)-2:
+                    st.session_state.idx += 1
+                else:
+                    st.session_state.idx = len(gan_img)-1
+                    st.warning("It's last problem")
+        
+            if st.button("Before"):
+                if st.session_state.idx >= 1:
+                    st.session_state.idx -= 1
+                else:
+                    st.session_state.idx = 0
+                    st.warning("It's first problem")
+
+            if st.button("Save"):
+                if os.path.isdir("save")==False:
+                    os.mkdir("save")
+                
+                for i in range(len(gan_img)):
+                    cv2.imwrite('save/{}.jpg'.format(i),gan_img[i])
+            
+            st.image(gan_img[st.session_state.idx])
+
+        
+        st.subheader("4. Make Problem PDF")
+
+        export_as_pdf = st.button("Export Report")
+
+        if export_as_pdf:
+            pdf = FPDF()
+
+            w=120
+            h=80
+
+            for img in os.listdir("save"):
+                pdf.add_page()
+                pdf.image("save/"+img,x=50,y=100,w=w,h=h)
+
+            pdf.set_font("Arial","B",16)
+
+            html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
+
+            st.markdown(html, unsafe_allow_html = True)
+    elif choice == "MakeImage":
         st.subheader("Upload your problem images")
         image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
 
@@ -223,8 +346,6 @@ def streamlit_run():
         #Save pdf
     elif choice == "Answer":
         st.text("Show")
-    elif choice == "Crop":
-        crop_editor.crop_editor()
     else:
         st.subheader("About")
         st.text("수학 오답 노트 편집기")
