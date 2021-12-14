@@ -154,7 +154,7 @@ class CustomDataset(Dataset):
 
         cv2.copyTo(mark_img,mark_img_mask,background_img[20:20+random_size,:random_size])
         if self.segmentation:
-            cv2.copyTo(np.full(mark_img.shape[:2],3).astype(np.uint8),mark_img_mask,seg_img[20:20+random_size,:random_size])
+            cv2.copyTo(np.full(mark_img.shape[:2],4).astype(np.uint8),mark_img_mask,seg_img[20:20+random_size,:random_size])
                        
         return background_img, seg_img
     

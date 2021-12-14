@@ -75,10 +75,6 @@ def crop_problem(pdf_path: str) :
                             elif re.search('^\d+[.]',numQ) is not None :
                                 x,y = scale(obj.bbox[0],obj.bbox[3],img_h,img_w,h,w)
                                 LT[idx].append([x-LT_pad,y-LT_pad])
-<<<<<<< HEAD
-=======
-
->>>>>>> master
 
         for page , image in enumerate(images) :
 
