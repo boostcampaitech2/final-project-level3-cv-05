@@ -183,6 +183,7 @@ def streamlit_run():
         if image_file is not None:
             img = load_image(image_file) #Get Image
             img = img.convert('RGB') #RGBA -> RGB
+            img = img.resize((800,600))
             st.image(img)
         
         st.subheader("2. Check wrong image, and you can edit")
@@ -203,7 +204,7 @@ def streamlit_run():
             #Use Crop Editor
             flag_edit = st.checkbox("Do you need to fix?")
             if flag_edit:
-                crop_editor.crop_editor(image_file) 
+                crop_editor.crop_editor(img) 
 
                 if(os.path.isfile("./data.json")):
                     crop_images = []

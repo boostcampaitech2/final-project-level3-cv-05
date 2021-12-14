@@ -53,9 +53,8 @@ def crop_editor(image):
     # Specify canvas parameters in application
     drawing_mode = st.selectbox(
     "Drawing tool:", ("rect", "transform"))
-    bg_image = Image.open(image) if image else None
+    bg_image = image if image else None
     shape = np.shape(bg_image)
-    #bg_image = st.sidebar.file_uploader("Background image:", type=["png", "jpg"])
 
     # Create a canvas component
     canvas_result = st_canvas(
