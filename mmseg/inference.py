@@ -148,7 +148,7 @@ def ori_copy(index):
     
     img_mask = np.zeros((img.shape[0], img.shape[1],1)).astype(np.uint8)
             
-    x,y,_ = np.where(img != 255)
+    x,y,_ = np.where(img < 200)
     for x_,y_ in zip(x,y) :
         img_mask[x_,y_,:] = 255 
 
