@@ -15,7 +15,7 @@ from tqdm import tqdm
 DEFAULT_PATH = '/opt/ml/project/mmseg/version/07'
 
 def mkdir(dir_):
-    if not os.path.isdir('dir'):
+    if not os.path.isdir(dir_):
         os.mkdir(dir_)
 
 def move_images():
