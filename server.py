@@ -19,7 +19,7 @@ import torch
 import torchvision.transforms as transforms
 import cv2
 import numpy as np
-from utils.btn_fn import *
+from utils.utils import *
 
 import json
 
@@ -166,6 +166,7 @@ def GAN_image(images):
     return outputs
 
 
+
 @st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
 def init_router():
     return stx.Router({"/":None, "/join": None})
@@ -181,9 +182,12 @@ def streamlit_run():
         st.session_state['auth_status'] = None
     if 'after_join' not in st.session_state:
         st.session_state['after_join'] = None
-    print(st.session_state)
-
+    if 'prev_menu' not in st.session_state:
+        st.session_state['prev_menu'] = ''
+    
+    # before login
     if st.session_state['auth_status'] != True:
+        # login page
         if st.session_state['stx_router_route'] == '/' :
             if(st.session_state['after_join'] == True):
                 st.info('회원가입이 완료되었습니다. 로그인을 해주세요.')
@@ -204,7 +208,7 @@ def streamlit_run():
 
             if btn2.button('회원가입') :
                 page_chg('/join', router)
-
+        # join page
         elif st.session_state['stx_router_route'] == '/join' :
             st.title('회원가입')
             st.subheader('아이디')
@@ -221,32 +225,40 @@ def streamlit_run():
                     st.session_state['after_join']==True
                     page_chg('/', router)
                     
-    
+    # after login
     else:
+        # sidebar content
         user_info = st.sidebar.container()
         user_info.subheader('%s님 안녕하세요!'% st.session_state['user_name'])
         if user_info.button('logout'):
             logout()
         
-
-        #result_df = load_data()
-        button_press = 0
-
-        
-
         menu = ["All","MakeImage","MakePDF","Answer","About", "Show All"]
         choice = st.sidebar.selectbox("Menu",menu)
+        st.sidebar.text(st.session_state['prev_menu'])
 
+        # session init
+        if st.session_state['prev_menu'] != choice:
+            st.session_state['prev_menu'] = choice
+            #Reset cache
+            for key in st.session_state.keys():
+                if key not in ['wrong_num', 'user_name', 'user_id', 'auth_status', 'prev_menu']:
+                    del st.session_state[key]
 
+        # main content
         st.title("Math wrong answer editor")
+
         if choice == "All":
             st.header("All part")
             st.subheader("1. Upload your problem images")
 
-            #TO DO : Get New Data, then reset cache
-            image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
 
-            if image_file is not None:
+            #TO DO : Get New Data, then reset cache
+            with st.form("Upload"):
+                image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
+                submit = st.form_submit_button("Upload")
+        
+            if image_file and submit is not None:
                 img = load_image(image_file) #Get Image
                 img = img.convert('RGB') #RGBA -> RGB
                 #img = img.resize((800,600))
@@ -332,14 +344,12 @@ def streamlit_run():
                     if os.path.isdir("save")==False:
                         os.mkdir("save")
                     
-        
+
                     for i in range(len(gan_img)):
                         save_name = 'save/%s_%s_%d.jpg'%(st.session_state['user_id'], image_file.name[:-4] , i)
-                        print(image_file)
-                        print(save_name)
                         cv2.imwrite(save_name,gan_img[i])
+                        # save img path in db
                         query = """insert into problems (user_id, problem_file_name, answer) values ('%s', '%s', '%s');"""%(st.session_state['user_id'], save_name, '1')
-                        print(query)
                         rowcount = run_insert(query)
                         if rowcount!=0:
                             st.info('문제가 저장되었습니다.')
