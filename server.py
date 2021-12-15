@@ -177,17 +177,26 @@ def streamlit_run():
         st.header("All part")
         st.subheader("1. Upload your problem images")
 
-        #TO DO : Get New Data, then reset cache
-        image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
+        #Get New Data
+        with st.form("Upload"):
+            image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
+            submit = st.form_submit_button("Upload")
 
-        if image_file is not None:
+        if submit is True:
+            #Reset cache
+            for key in st.session_state.keys():
+                del st.session_state[key]
+
+        if image_file and submit is not None:
             img = load_image(image_file) #Get Image
             img = img.convert('RGB') #RGBA -> RGB
+                
             #img = img.resize((800,600))
             #50MB 이상이면 canvas에 그려지지 않음.. Resize?
             #Change to ratio
             st.image(img)
         
+
         st.subheader("2. Check wrong image, and you can edit")
         
         if 'OD_button' not in st.session_state:
@@ -223,6 +232,7 @@ def streamlit_run():
                             area = (x,y,x+w,y+h)
                             cropped_img = img.crop(area)
                             crop_images.append(np.array(cropped_img))
+            
 
             if "OD_show_button" not in st.session_state:
                 st.session_state.OD_show_button = False
@@ -232,6 +242,7 @@ def streamlit_run():
             
             if st.session_state.OD_show_button:
                 st.image(crop_images) 
+
 
         st.subheader("3. Clear handwriting")
 
@@ -270,7 +281,6 @@ def streamlit_run():
                     cv2.imwrite('save/{}.jpg'.format(i),gan_img[i])
             
             st.image(gan_img[st.session_state.idx])
-
         
         st.subheader("4. Make Problem PDF")
 
