@@ -183,7 +183,9 @@ def streamlit_run():
         if image_file is not None:
             img = load_image(image_file) #Get Image
             img = img.convert('RGB') #RGBA -> RGB
-            img = img.resize((800,600))
+            #img = img.resize((800,600))
+            #50MB 이상이면 canvas에 그려지지 않음.. Resize?
+            #Change to ratio
             st.image(img)
         
         st.subheader("2. Check wrong image, and you can edit")
