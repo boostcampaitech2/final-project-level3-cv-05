@@ -7,25 +7,20 @@ print("connected" ,conn.is_connected())
 
 @st.cache(ttl=600)
 def run_select(query):
-    with conn.cursor() as cur:
-        cur.execute(query)
-        return cur.fetchall()
+    cur = conn.cursor()
+    cur.execute(query)
+    return cur.fetchall()
 
 @st.cache(ttl=600)
 def run_insert(query):
-    with conn.cursor() as cur:
-        cur.execute(query)
-        conn.commit()
-        return cur.rowcount
-
-
-
+    cur = conn.cursor()
+    cur.execute(query)
+    conn.commit()
+    return cur.rowcount
 
 def page_chg(key, router):
     st.session_state['page'] = key
     router.route(key)
-
-
 
 def login(user_id, user_pw):
     rows = run_select('SELECT * from users where user_id="%s" and user_pw="%s";' % (user_id, user_pw))
