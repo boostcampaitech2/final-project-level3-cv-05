@@ -64,8 +64,11 @@ def ori_combine_window(index):
     PATH = f'{DEFAULT_PATH}/images/train/{str(index).zfill(3)}'
 
     images = sorted(os.listdir(PATH))
-    combine_image = np.zeros((384*3, 384*3))
-    points = [(0, 0), (0, 384), (0, 384*2), (384, 0), (384, 384), (384, 384*2), (384*2, 0), (384*2, 384), (384*2, 384*2)]
+    patch_h, patch_w = 384, 384
+    combine_image = np.zeros((patch_h*3, patch_w*3))
+    points = [(0, 0), (0, patch_w), (0, patch_w*2), (patch_h, 0), (patch_h, patch_w), 
+          (patch_h, patch_w*2), (patch_h*2, 0), (patch_h*2, patch_w), (patch_h*2, patch_w*2)]
+
     for idx in range(9):
         seg_img = cv2.imread(os.path.join(PATH, images[idx]), cv2.IMREAD_GRAYSCALE)
         point = points[idx]
@@ -163,7 +166,8 @@ if __name__ == "__main__":
     move_images() 
     model, cfg = load_model(config_dir, checkpoint)
 
-    for index in tqdm(range(817)):
+    dataset_length = len(os.listdir(f'{DEFAULT_PATH}/images/train'))
+    for index in tqdm(range(dataset_length)):
         inference(model, cfg, index)
         combine_window(index)
         post_processing(index)
