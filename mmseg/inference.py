@@ -23,13 +23,15 @@ def move_images():
     ANNOTATION_PATH = f'{DEFAULT_PATH}/annotations/train'
     INFERENCE_PATH = f'{DEFAULT_PATH}/inference'
 
-    mkdir(f'{DEFAULT_PATH}/inference/combine_img')
-    mkdir(f'{DEFAULT_PATH}/inference/ori_combine_img')
-    mkdir(f'{DEFAULT_PATH}/inference/final_img')
-    mkdir(f'{DEFAULT_PATH}/inference/resize_img')
-    mkdir(f'{DEFAULT_PATH}/inference/ori_copy')
+    mkdir(f'{INFERENCE_PATH}/combine_img')
+    mkdir(f'{INFERENCE_PATH}/ori_combine_img')
+    mkdir(f'{INFERENCE_PATH}/final_img')
+    mkdir(f'{INFERENCE_PATH}/resize_img')
+    mkdir(f'{INFERENCE_PATH}/ori_copy')
 
-    for idx in tqdm(range(817)):
+    dataset_length = len(os.listdir(f'{DEFAULT_PATH}/images/train'))
+
+    for idx in tqdm(range(dataset_length)):
         image_path = os.path.join(IMAGE_PATH, str(idx).zfill(3))
         annotation_path = os.path.join(ANNOTATION_PATH, str(idx).zfill(3))
         inference_path = os.path.join(INFERENCE_PATH, str(idx).zfill(3))
