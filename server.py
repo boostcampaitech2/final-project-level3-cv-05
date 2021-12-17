@@ -90,8 +90,8 @@ def GAN_image(images):
     gan_model = load_attgan_model('attentiongan.pth')
     # data transform
     load_size = 512
-    img_transform = A.Compose(
-        [A.Resize(load_size, load_size, 2),
+    img_transform = A.Compose([
+        A.Resize(load_size, load_size, 2),
         A.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         A.pytorch.ToTensorV2()])
     inputs = list()
@@ -115,6 +115,117 @@ def session_init():
     if 'prev_menu' not in st.session_state:
         st.session_state['prev_menu'] = ''
 
+
+def upload_problem_images():
+    #TO DO : Get New Data, then reset cache
+    with st.form("Upload"):
+        image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
+        submit = st.form_submit_button("Upload")
+
+    if image_file and submit is not None:
+        img = load_image(image_file) #Get Image
+        img = img.convert('RGB') #RGBA -> RGB
+        #50MB 이상이면 canvas에 그려지지 않음.. Resize?
+        #Change to ratio
+        st.image(img)
+    
+    return image_file, img
+
+
+def run_object_detection():
+    if 'OD_button' not in st.session_state:
+        st.session_state.OD_button = False
+    if st.button("Crop"):
+        st.session_state.OD_button = True
+    if st.session_state.OD_button:
+        try:
+            od_img, crop_images = OD_image(img)
+        except UnboundLocalError:
+            st.error("Plz, input image")
+        else:
+            #Show Image Crop
+            st.subheader("Crop Result")
+            st.image(od_img)
+        #Use Crop Editor
+        flag_edit = st.checkbox("Do you need to fix?")
+        if flag_edit:
+            crop_editor.crop_editor(img) 
+            crop_deitor.crop_editor_json(img)
+
+        if "OD_show_button" not in st.session_state:
+            st.session_state.OD_show_button = False
+
+        if st.button("Show"):
+            st.session_state.OD_show_button = True
+
+        if st.session_state.OD_show_button:
+            st.image(crop_images)
+
+    return crop_images
+
+
+def run_gan():
+    if 'GAN_button' not in st.session_state:
+        st.session_state.GAN_button = False
+    if st.button("Clear"):
+        st.session_state.GAN_button = True
+    if st.session_state.GAN_button:
+        gan_img = GAN_image(crop_images)
+
+        st.subheader("Check Final Image & Save") #Show Clear image
+        if "idx" not in st.session_state:
+            st.session_state.idx = 0
+
+        before, next, save = st.columns(3)
+
+        if next.button("Next"):
+            if st.session_state.idx <= len(gan_img)-2:
+                st.session_state.idx += 1
+            else:
+                st.session_state.idx = len(gan_img)-1
+                st.warning("It's last problem")
+
+        if before.button("Before"):
+            if st.session_state.idx >= 1:
+                st.session_state.idx -= 1
+            else:
+                st.session_state.idx = 0
+                st.warning("It's first problem")
+
+        if save.button("Save"):
+            mkdir("save")
+            for i in range(len(gan_img)):
+                save_name = 'save/%s_%s_%d.jpg'%(st.session_state['user_id'], image_file.name[:-4] , i)
+                cv2.imwrite(save_name,gan_img[i])
+                # save img path in db
+                query = """insert into problems (user_id, problem_file_name, answer) values ('%s', '%s', '%s');"""%(st.session_state['user_id'], save_name, '1')
+                rowcount = run_insert(query)
+                if rowcount!=0:
+                    st.info('문제가 저장되었습니다.')
+
+        st.image(gan_img[st.session_state.idx])
+
+
+def make_problem_pdf():
+    export_as_pdf = st.button("Export Report")
+    if export_as_pdf:
+        if os.path.isdir("save"):
+            pdf = FPDF()
+            x, y, w, h=0, 10, 120, 100
+            for img in os.listdir("save"):
+                pdf.add_page()
+                pdf.image(f"save/{img}", x=x, y=y, w=w, h=h)
+            pdf.set_font("Arial", "B", 16)
+            html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
+            st.markdown(html, unsafe_allow_html = True)
+        else:
+            st.error("plz, save image")
+
+
+def show_images(iamges):
+    for image_f in images:
+        image = Image.open(image_f[2])
+        st.image(image)
 
 @st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
 def init_router():
@@ -192,110 +303,20 @@ def streamlit_run():
         if choice == "All":
             st.header("All part")
             st.subheader("1. Upload your problem images")
-
-            #TO DO : Get New Data, then reset cache
-            with st.form("Upload"):
-                image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
-                submit = st.form_submit_button("Upload")
-        
-            if image_file and submit is not None:
-                img = load_image(image_file) #Get Image
-                img = img.convert('RGB') #RGBA -> RGB
-                #img = img.resize((800,600))
-                #50MB 이상이면 canvas에 그려지지 않음.. Resize?
-                #Change to ratio
-                st.image(img)
-            st.subheader("2. Check wrong image, and you can edit")
+            image_file, img = upload_problem_images()
             
-            if 'OD_button' not in st.session_state:
-                st.session_state.OD_button = False
-            if st.button("Crop"):
-                st.session_state.OD_button = True
-            if st.session_state.OD_button:
-                try:
-                    od_img, crop_images = OD_image(img)
-                except UnboundLocalError:
-                    st.error("Plz, input image")
-                else:
-                    #Show Image Crop
-                    st.subheader("Crop Result")
-                    st.image(od_img)
-                #Use Crop Editor
-                flag_edit = st.checkbox("Do you need to fix?")
-                if flag_edit:
-                    crop_editor.crop_editor(img) 
-                    crop_deitor.crop_editor_json(img)
-
-                if "OD_show_button" not in st.session_state:
-                    st.session_state.OD_show_button = False
-                
-                if st.button("Show"):
-                    st.session_state.OD_show_button = True
-                
-                if st.session_state.OD_show_button:
-                    st.image(crop_images) 
+            st.subheader("2. Check wrong image, and you can edit")
+            crop_images = run_object_detection()
 
             st.subheader("3. Clear handwriting")
+            run_gan()
 
-            if 'GAN_button' not in st.session_state:
-                st.session_state.GAN_button = False
-            if st.button("Clear"):
-                st.session_state.GAN_button = True
-            if st.session_state.GAN_button:
-                gan_img = GAN_image(crop_images)
-
-                st.subheader("Check Final Image & Save") #Show Clear image
-                if "idx" not in st.session_state:
-                    st.session_state.idx = 0
-
-                before, next, save = st.columns(3)
-
-                if next.button("Next"):
-                    if st.session_state.idx <= len(gan_img)-2:
-                        st.session_state.idx += 1
-                    else:
-                        st.session_state.idx = len(gan_img)-1
-                        st.warning("It's last problem")
-
-                if before.button("Before"):
-                    if st.session_state.idx >= 1:
-                        st.session_state.idx -= 1
-                    else:
-                        st.session_state.idx = 0
-                        st.warning("It's first problem")
-
-                if save.button("Save"):
-                    mkdir("save")
-                    for i in range(len(gan_img)):
-                        save_name = 'save/%s_%s_%d.jpg'%(st.session_state['user_id'], image_file.name[:-4] , i)
-                        cv2.imwrite(save_name,gan_img[i])
-                        # save img path in db
-                        query = """insert into problems (user_id, problem_file_name, answer) values ('%s', '%s', '%s');"""%(st.session_state['user_id'], save_name, '1')
-                        rowcount = run_insert(query)
-                        if rowcount!=0:
-                            st.info('문제가 저장되었습니다.')
-                
-                st.image(gan_img[st.session_state.idx])
             st.subheader("4. Make Problem PDF")
-            export_as_pdf = st.button("Export Report")
-            if export_as_pdf:
-                if os.path.isdir("save"):
-                    pdf = FPDF()
-                    x, y, w, h=0, 10, 120, 100
-                    for img in os.listdir("save"):
-                        pdf.add_page()
-                        pdf.image(f"save/{img}", x=x, y=y, w=w, h=h)
-                    pdf.set_font("Arial", "B", 16)
-                    html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
-                    st.markdown(html, unsafe_allow_html = True)
-                else:
-                    st.error("plz, save image")
+            make_problem_pdf()
 
         elif choice == "Show All" :
             images =  run_select('SELECT * from problems where user_id="%s";' % st.session_state['user_id'])
-            for image_f in images:
-                image = Image.open(image_f[2])
-                st.image(image)
+            show_images(iamges)
         
         elif choice == "MakeImage":
             st.subheader("Upload your problem images")
