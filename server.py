@@ -5,7 +5,6 @@ import streamlit as st
 import extra_streamlit_components as stx
 import os
 import pandas as pd
-import csv
 import base64
 
 #streamlit run app.py --server.address=127.0.0.1
@@ -16,7 +15,6 @@ from models.AttentionRes_G import AttentionRes_G
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import torch
-import torchvision.transforms as transforms
 import cv2
 import numpy as np
 from utils.utils import *
@@ -56,37 +54,6 @@ def tensor2im(input_image, imtype=np.uint8):
         image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0  # post-processing: tranpose and scaling
         images.append(image_numpy.astype(imtype))
     return images
-
-
-#Fxn to Save answer
-def save_results(results_df,button_press,image_file,problem_name,answer):
-    results_df.at[button_press,'File name'] = image_file.name
-    results_df.at[button_press,'Nick name'] = problem_name
-    results_df.at[button_press,'Answer'] = answer
-    results_df.to_csv('answer.csv',index=None)
-
-
-#Fxn to make csv file
-def load_data():
-    header = ["File name","Nick name","Answer"]
-    try:
-        df = pd.read_csv('answer.csv')
-    except FileNotFoundError:
-        with open('answer.csv','w',newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(header)
-        df = pd.read_csv('answer.csv')
-    return df
-
-
-#Fxn to Save Upload csv
-def save_uploaded_csv(uploadfile):
-    if(os.path.isdir("math_data") == False): #Change path
-        os.mkdir("math_data")
-
-    with open(os.path.join("math_data",uploadfile.name),'wb') as f:
-        f.write(uploadfile.getbuffer())
-    return st.success("Save Answer : To Show Click Answer on Menu")
 
 
 #Fxn to Save Uploaded File to Directory
@@ -144,10 +111,6 @@ def GAN_image(images):
     gan_model = load_attgan_model('attentiongan.pth')
     # data transform
     load_size = 512
-    # img_transform = transforms.Compose(
-    #     [transforms.Resize([load_size,load_size], Image.BICUBIC),
-    #     transforms.ToTensor(),
-    #     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
     img_transform = A.Compose(
         [A.Resize(load_size, load_size, 2),
         A.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
@@ -156,15 +119,10 @@ def GAN_image(images):
     for image in images:
         inputs.append(img_transform(image=image)['image'])
     inputs = torch.stack(inputs, 0)
-    # af_transform = img_transform(image)
-    # c,w,h = af_transform.shape
-    # af_transform = np.reshape(af_transform, (1,c,w,h)) # convert to batch form
-    # forward and tensor to image
     with torch.no_grad():
         output = gan_model(inputs)
         outputs = tensor2im(output)
     return outputs
-
 
 
 @st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
