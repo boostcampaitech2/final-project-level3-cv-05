@@ -23,6 +23,7 @@ def move_images():
     ANNOTATION_PATH = f'{DEFAULT_PATH}/annotations/train'
     INFERENCE_PATH = f'{DEFAULT_PATH}/inference'
 
+    mkdir(INFERENCE_PATH)
     mkdir(f'{INFERENCE_PATH}/combine_img')
     mkdir(f'{INFERENCE_PATH}/ori_combine_img')
     mkdir(f'{INFERENCE_PATH}/final_img')
@@ -55,7 +56,7 @@ def combine_window(index):
     for idx in range(9):
         seg_img = cv2.imread(os.path.join(PATH, images[idx]), cv2.IMREAD_GRAYSCALE)
         point = points[idx]
-        combine_image[point[0]:point[0]+384,point[1]:point[1]+384] = seg_img
+        combine_image[point[0]:point[0]+patch_h,point[1]:point[1]+patch_w] = seg_img
 
     img = np.full(combine_image.shape, 255)
     img[combine_image == 1] = 0
@@ -75,7 +76,7 @@ def ori_combine_window(index):
     for idx in range(9):
         seg_img = cv2.imread(os.path.join(PATH, images[idx]), cv2.IMREAD_GRAYSCALE)
         point = points[idx]
-        combine_image[point[0]:point[0]+384,point[1]:point[1]+384] = seg_img    
+        combine_image[point[0]:point[0]+patch_h,point[1]:point[1]+patch_w] = seg_img    
 
     cv2.imwrite(f'{DEFAULT_PATH}/inference/ori_combine_img/{str(index).zfill(3)}.png', combine_image)
 
