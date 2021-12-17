@@ -125,6 +125,22 @@ def GAN_image(images):
     return outputs
 
 
+def crop_editor_json(img):
+    if(os.path.isfile("./data.json")):
+    crop_images = list()
+    with open("data.json") as json_file:
+        json_data = json.load(json_file)
+        json_object = json_data["objects"]  
+        for ob in json_object:
+            x = ob["left"]
+            y = ob["top"]
+            w = ob["width"]
+            h = ob["hei 
+            area = (x,y,x+w,y+h)
+            cropped_img = img.crop(area)
+            crop_images.append(np.array(cropped_img))
+
+
 @st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
 def init_router():
     return stx.Router({"/":None, "/join": None})
@@ -210,7 +226,6 @@ def streamlit_run():
             st.header("All part")
             st.subheader("1. Upload your problem images")
 
-
             #TO DO : Get New Data, then reset cache
             with st.form("Upload"):
                 image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
@@ -244,21 +259,7 @@ def streamlit_run():
                 if flag_edit:
                     crop_editor.crop_editor(img) 
 
-                    if(os.path.isfile("./data.json")):
-                        crop_images = []
-                        with open("data.json") as json_file:
-                            json_data = json.load(json_file)
-                            json_object = json_data["objects"]
-
-                            for ob in json_object:
-                                x = ob["left"]
-                                y = ob["top"]
-                                w = ob["width"]
-                                h = ob["height"]
-
-                                area = (x,y,x+w,y+h)
-                                cropped_img = img.crop(area)
-                                crop_images.append(np.array(cropped_img))
+                    crop_editor_json(img)
 
                 if "OD_show_button" not in st.session_state:
                     st.session_state.OD_show_button = False
