@@ -7,19 +7,15 @@ import os
 import pandas as pd
 import base64
 
-#streamlit run app.py --server.address=127.0.0.1
 import crop_editor
 
 from detection import load_model, get_crop_location, draw_from_crop_locations, crop_from_crop_locations
 from models.AttentionRes_G import AttentionRes_G
 import albumentations as A
-from albumentations.pytorch import ToTensorV2
 import torch
 import cv2
 import numpy as np
 from utils.utils import *
-
-import json
 
 #streamlit run server.py --server.address=127.0.0.1
 #이렇게 하면 브라우저가 Local로 띄워짐.
@@ -50,7 +46,6 @@ def tensor2im(input_image, imtype=np.uint8):
     images = []
     image_numpys = input_image.data.cpu().float().numpy()
     for image_numpy in image_numpys:
-        # image_numpy = image_tensor.cpu().float().numpy()
         image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0  # post-processing: tranpose and scaling
         images.append(image_numpy.astype(imtype))
     return images
@@ -114,7 +109,7 @@ def GAN_image(images):
     img_transform = A.Compose(
         [A.Resize(load_size, load_size, 2),
         A.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        ToTensorV2()])
+        A.pytorch.ToTensorV2()])
     inputs = []
     for image in images:
         inputs.append(img_transform(image=image)['image'])
@@ -123,22 +118,6 @@ def GAN_image(images):
         output = gan_model(inputs)
         outputs = tensor2im(output)
     return outputs
-
-
-def crop_editor_json(img):
-    if(os.path.isfile("./data.json")):
-    crop_images = list()
-    with open("data.json") as json_file:
-        json_data = json.load(json_file)
-        json_object = json_data["objects"]  
-        for ob in json_object:
-            x = ob["left"]
-            y = ob["top"]
-            w = ob["width"]
-            h = ob["hei 
-            area = (x,y,x+w,y+h)
-            cropped_img = img.crop(area)
-            crop_images.append(np.array(cropped_img))
 
 
 @st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
@@ -259,7 +238,7 @@ def streamlit_run():
                 if flag_edit:
                     crop_editor.crop_editor(img) 
 
-                    crop_editor_json(img)
+                    crop_deidotr.crop_editor_json(img)
 
                 if "OD_show_button" not in st.session_state:
                     st.session_state.OD_show_button = False
@@ -360,11 +339,9 @@ def streamlit_run():
 
                 od_img, crop_images = OD_image(img)
                 gan_img = GAN_image(crop_images)
-                # after_img = GAN_image(gan_img)
 
                 flag_od = st.checkbox("Object Detection")
                 flag_gan = st.checkbox("GAN")
-                # flag_after = st.checkbox("AFTER")
 
                 if flag_od:
                     st.subheader("Object Detection")
@@ -372,9 +349,6 @@ def streamlit_run():
                 if flag_gan:
                     st.subheader("GAN")
                     st.image(gan_img[0],use_column_width = True)
-                # if flag_after:
-                #     st.subheader("AFTER")
-                #     st.image(after_img,use_column_width = True)
 
                 st.write(image_file.name)
 
