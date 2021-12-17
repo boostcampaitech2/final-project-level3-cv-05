@@ -29,7 +29,7 @@ def move_images():
     mkdir(f'{INFERENCE_PATH}/resize_img')
     mkdir(f'{INFERENCE_PATH}/ori_copy')
 
-    dataset_length = len(os.listdir(f'{DEFAULT_PATH}/images/train'))
+    dataset_length = len(os.listdir(IMAGE_PATH))
 
     for idx in tqdm(range(dataset_length)):
         image_path = os.path.join(IMAGE_PATH, str(idx).zfill(3))
