@@ -8,6 +8,7 @@ import pandas as pd
 import base64
 
 import crop_editor
+from gan import tensor2im
 
 from detection import load_model, get_crop_location, draw_from_crop_locations, crop_from_crop_locations
 from models.AttentionRes_G import AttentionRes_G
@@ -36,19 +37,6 @@ def load_attgan_model(model_file):
     state_dict = torch.load(load_path, map_location=str('cuda'))
     net.load_state_dict(state_dict)
     return net
-
-def tensor2im(input_image, imtype=np.uint8):
-    """"Converts a Tensor array into a numpy image array.
-    Parameters:
-        input_image (tensor) --  the input image tensor array
-        imtype (type)        --  the desired type of the converted numpy array
-    """
-    images = []
-    image_numpys = input_image.data.cpu().float().numpy()
-    for image_numpy in image_numpys:
-        image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0  # post-processing: tranpose and scaling
-        images.append(image_numpy.astype(imtype))
-    return images
 
 
 #Fxn to Save Uploaded File to Directory
@@ -120,14 +108,7 @@ def GAN_image(images):
     return outputs
 
 
-@st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
-def init_router():
-    return stx.Router({"/":None, "/join": None})
-
-
-def streamlit_run():
-    router = init_router()
-    router.show_route_view()
+def session_init():
     #session initialize
     if 'page' not in st.session_state:
         st.session_state['page'] = 'login'
@@ -137,6 +118,17 @@ def streamlit_run():
         st.session_state['after_join'] = None
     if 'prev_menu' not in st.session_state:
         st.session_state['prev_menu'] = ''
+
+
+@st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
+def init_router():
+    return stx.Router({"/":None, "/join": None})
+
+
+def streamlit_run():
+    router = init_router()
+    router.show_route_view()
+    session_init()
     
     # before login
     if st.session_state['auth_status'] != True:
@@ -217,7 +209,6 @@ def streamlit_run():
                 #50MB 이상이면 canvas에 그려지지 않음.. Resize?
                 #Change to ratio
                 st.image(img)
-            
             st.subheader("2. Check wrong image, and you can edit")
             
             if 'OD_button' not in st.session_state:
@@ -237,8 +228,7 @@ def streamlit_run():
                 flag_edit = st.checkbox("Do you need to fix?")
                 if flag_edit:
                     crop_editor.crop_editor(img) 
-
-                    crop_deidotr.crop_editor_json(img)
+                    crop_deitor.crop_editor_json(img)
 
                 if "OD_show_button" not in st.session_state:
                     st.session_state.OD_show_button = False
@@ -279,9 +269,8 @@ def streamlit_run():
                         st.warning("It's first problem")
 
                 if save.button("Save"):
-                    if os.path.isdir("save")==False:
+                    if os.path.isdir("save") == False:
                         os.mkdir("save")
-                    
 
                     for i in range(len(gan_img)):
                         save_name = 'save/%s_%s_%d.jpg'%(st.session_state['user_id'], image_file.name[:-4] , i)
@@ -291,31 +280,19 @@ def streamlit_run():
                         rowcount = run_insert(query)
                         if rowcount!=0:
                             st.info('문제가 저장되었습니다.')
-
-
                 
                 st.image(gan_img[st.session_state.idx])
-
-            
             st.subheader("4. Make Problem PDF")
-
             export_as_pdf = st.button("Export Report")
-
             if export_as_pdf:
                 if os.path.isdir("save"):
                     pdf = FPDF()
-
-                    w=120
-                    h=100
-
+                    w, h=120, 100
                     for img in os.listdir("save"):
                         pdf.add_page()
-                        pdf.image("save/"+img,x=0,y=10,w=w,h=h)
-
-                    pdf.set_font("Arial","B",16)
-
+                        pdf.image(f"save/{img}", x=0, y=10, w=w, h=h)
+                    pdf.set_font("Arial", "B", 16)
                     html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
-
                     st.markdown(html, unsafe_allow_html = True)
                 else:
                     st.error("plz, save image")
@@ -329,11 +306,9 @@ def streamlit_run():
         elif choice == "MakeImage":
             st.subheader("Upload your problem images")
             image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
-
             if image_file is not None:
                 #Get Before Image
                 img = load_image(image_file)
-
                 st.subheader("Before")
                 st.image(img, use_column_width = True)
 

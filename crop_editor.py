@@ -100,5 +100,21 @@ def crop_editor(image):
         open('data.json','w').write(json.dumps(canvas_json, indent=4))
 
 
+def crop_editor_json(img):
+    if(os.path.isfile("./data.json")):
+    crop_images = list()
+    with open("data.json") as json_file:
+        json_data = json.load(json_file)
+        json_object = json_data["objects"]  
+        for ob in json_object:
+            x = ob["left"]
+            y = ob["top"]
+            w = ob["width"]
+            h = ob["hei 
+            area = (x,y,x+w,y+h)
+            cropped_img = img.crop(area)
+            crop_images.append(np.array(cropped_img))
+
+
 if __name__ == "__main__":
     crop_editor()
