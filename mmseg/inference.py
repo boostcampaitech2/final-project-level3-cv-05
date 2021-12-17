@@ -46,11 +46,12 @@ def move_images():
 
 def combine_window(index):
     PATH = f'{DEFAULT_PATH}/inference/{str(index).zfill(3)}'
-    #PATH = f'{DEFAULT_PATH}/images/train/{str(index).zfill(3)}'
 
     images = sorted(os.listdir(PATH))
-    combine_image = np.zeros((384*3, 384*3))
-    points = [(0, 0), (0, 384), (0, 384*2), (384, 0), (384, 384), (384, 384*2), (384*2, 0), (384*2, 384), (384*2, 384*2)]
+    patch_h, patch_w = 384, 384
+    combine_image = np.zeros((patch_h*3, patch_w*3))
+    points = [(0, 0), (0, patch_w), (0, patch_w*2), (patch_h, 0), (patch_h, patch_w), 
+          (patch_h, patch_w*2), (patch_h*2, 0), (patch_h*2, patch_w), (patch_h*2, patch_w*2)]
     for idx in range(9):
         seg_img = cv2.imread(os.path.join(PATH, images[idx]), cv2.IMREAD_GRAYSCALE)
         point = points[idx]
