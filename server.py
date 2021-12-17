@@ -41,9 +41,7 @@ def load_attgan_model(model_file):
 
 #Fxn to Save Uploaded File to Directory
 def save_uploaded_file(uploadfile):
-    if(os.path.isdir("math_data") == False): #Change path
-        os.mkdir("math_data")
-
+    mkdir("math_data")
     with open(os.path.join("math_data",uploadfile.name),'wb') as f:
         f.write(uploadfile.getbuffer())
     return st.success("Upload file :{} in Server".format(uploadfile.name))
@@ -51,9 +49,7 @@ def save_uploaded_file(uploadfile):
 
 #Fxn to Save After File
 def save_after_file(file,name):
-    if(os.path.isdir("new_data")==False):
-        os.mkdir("new_data")
-
+    mkdir("new_data")  
     file.save('./new_data/{}'.format(name),'png')
     return st.success("Upload file :{} in Server".format(name))
 
@@ -98,7 +94,7 @@ def GAN_image(images):
         [A.Resize(load_size, load_size, 2),
         A.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         A.pytorch.ToTensorV2()])
-    inputs = []
+    inputs = list()
     for image in images:
         inputs.append(img_transform(image=image)['image'])
     inputs = torch.stack(inputs, 0)
@@ -179,7 +175,7 @@ def streamlit_run():
             logout()
         
         menu = ["All","MakeImage","MakePDF","Answer","About", "Show All"]
-        choice = st.sidebar.selectbox("Menu",menu)
+        choice = st.sidebar.selectbox("Menu", menu)
         st.sidebar.text(st.session_state['prev_menu'])
 
         # session init
@@ -269,9 +265,7 @@ def streamlit_run():
                         st.warning("It's first problem")
 
                 if save.button("Save"):
-                    if os.path.isdir("save") == False:
-                        os.mkdir("save")
-
+                    mkdir("save")
                     for i in range(len(gan_img)):
                         save_name = 'save/%s_%s_%d.jpg'%(st.session_state['user_id'], image_file.name[:-4] , i)
                         cv2.imwrite(save_name,gan_img[i])
@@ -287,10 +281,10 @@ def streamlit_run():
             if export_as_pdf:
                 if os.path.isdir("save"):
                     pdf = FPDF()
-                    w, h=120, 100
+                    x, y, w, h=0, 10, 120, 100
                     for img in os.listdir("save"):
                         pdf.add_page()
-                        pdf.image(f"save/{img}", x=0, y=10, w=w, h=h)
+                        pdf.image(f"save/{img}", x=x, y=y, w=w, h=h)
                     pdf.set_font("Arial", "B", 16)
                     html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
                     st.markdown(html, unsafe_allow_html = True)
@@ -305,7 +299,7 @@ def streamlit_run():
         
         elif choice == "MakeImage":
             st.subheader("Upload your problem images")
-            image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
+            image_file = st.file_uploader("Upload Image", type=['png','jpeg','jpg'])
             if image_file is not None:
                 #Get Before Image
                 img = load_image(image_file)
@@ -320,10 +314,10 @@ def streamlit_run():
 
                 if flag_od:
                     st.subheader("Object Detection")
-                    st.image(od_img,use_column_width = True)
+                    st.image(od_img, use_column_width = True)
                 if flag_gan:
                     st.subheader("GAN")
-                    st.image(gan_img[0],use_column_width = True)
+                    st.image(gan_img[0], use_column_width = True)
 
                 st.write(image_file.name)
 
