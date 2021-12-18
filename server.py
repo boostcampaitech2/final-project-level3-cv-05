@@ -133,6 +133,7 @@ def upload_problem_images(place, router):
         img = load_image(image_file) #Get Image
         img = img.convert('RGB') #RGBA -> RGB
         img = img.resize((1000,900))
+
         st.session_state["image"] = img #Give Image
          #TO DO : Find Error cuase over 50MB sol:Resize, change to ratio (1080x1920)
         place.image(img)
@@ -144,15 +145,14 @@ def upload_problem_images(place, router):
             page_chg('/',router)
 
 def run_object_detection(img, place, router):
-    if 'locations' not in st.session_state:
-        _, _, st.session_state['locations'] = OD_image(img)
-    if 'json_file' not in st.session_state:
-        st.session_state['json_file'] = crop_editor.make_detection_canvas(st.session_state['locations'])
 
-    if st.session_state['locations'] is not None:#TO DO: Check OD must return locations?
-        st.session_state['json_file'] = crop_editor.make_detection_canvas(st.session_state['locations'])
-    #Get locations only once
-    if st.session_state['json_file'] is not None:
+    locations = None
+    json_file = None
+    _, _, locations = OD_image(img)
+    if locations is not None:#TO DO: Check OD must return locations?
+        json_file = crop_editor.make_detection_canvas(locations)
+        #Get locations only once
+    if json_file is not None:
         # Specify canvas parameters in application
         place.write("Load가 끝날 때마다 천천히 조정해야 수정이 적용됨.")
         select = place.selectbox("Tool:", ("크기 조정", "새로 그리기"))
@@ -189,7 +189,6 @@ def run_object_detection(img, place, router):
                 place.error("자를 문제가 없습니다.")
             else:
                 for object in canvas_result.json_data["objects"]:
-                    print(object)
                     x = object["left"]
                     y = object["top"]
                     w = object["width"]
@@ -197,8 +196,6 @@ def run_object_detection(img, place, router):
 
                     area = (x,y,x+w,y+h)
                     cropped_img = img.crop(area)
-                    cropped_img.save("test.jpg")
-                    #cv2.imwrite("test.jpg",cropped_img)
                     cropped_imges.append(np.array(cropped_img))
                 cv2.imwrite("test1.jpg", canvas_result.image_data)
                 st.session_state["crop_image"] = cropped_imges
@@ -226,6 +223,7 @@ def run_gan(place, router):
 
     place.subheader("손글씨 지운 사진 확인하고, 문제의 과목과 답을 입력하세요.") #Show Clear image
     place.subheader("문제의 과목과 답을 모두 입력 후에, 문제들을 저장하세요.")
+
     if "idx" not in st.session_state:
         st.session_state.idx = 0
         st.session_state.subject = dict()
@@ -305,7 +303,6 @@ def make_problem_pdf(place, router, images):
             st.session_state["pick_problem"].append(st.session_state["idx_p"])
     except IndexError:
         img1.empty()
-
     
     try:
         img = images[st.session_state["idx_p"] + 1]
@@ -332,6 +329,7 @@ def make_problem_pdf(place, router, images):
 
     export_as_problem_pdf = st.button("Export Problem Report")
     if export_as_problem_pdf:
+
         if os.path.isdir("save"):
             pdf = FPDF()
             x, y, w, h=0, 10, 120, 100
@@ -342,6 +340,7 @@ def make_problem_pdf(place, router, images):
             html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
             st.markdown(html, unsafe_allow_html = True)
     
+
     export_as_answer_pdf = st.button("Export Answer Report")
     if export_as_answer_pdf:
         pdf = FPDF()
@@ -473,8 +472,10 @@ def streamlit_run():
             elif st.session_state["sub_page"] == "fourth":
                 fourth = place.container()
                 fourth.subheader("4. Make Problem PDF")
+
                 images =  run_select('SELECT * from problems where user_id="%s";' % st.session_state['user_id'])
                 make_problem_pdf(fourth, router, images)
+
 
         elif choice == "Show All" :
             images =  run_select('SELECT * from problems where user_id="%s";' % st.session_state['user_id'])
