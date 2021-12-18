@@ -1,1 +1,6 @@
 *.csv
+checkpoints/
+.streamlit/
+__pycache__/
+models/__pycache__
+save/
