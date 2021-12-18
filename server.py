@@ -6,12 +6,14 @@ import extra_streamlit_components as stx
 import os
 import pandas as pd
 import base64
+from streamlit_drawable_canvas import st_canvas
 
 import crop_editor
 from gan import tensor2im
 
 from detection import load_model, get_crop_location, draw_from_crop_locations, crop_from_crop_locations
 from models.AttentionRes_G import AttentionRes_G
+
 import albumentations as A
 import torch
 import cv2
@@ -54,7 +56,7 @@ def save_after_file(file,name):
     return st.success("Upload file :{} in Server".format(name))
 
 
-#pdf 다운 (아직 완성 안됨)
+#pdf 다운
 def create_download_link(val, filename):
     b64 = base64.b64encode(val)  # val looks like b'...'
     return f'<a href="data:application/octet-stream;base64,{b64.decode()}" download="{filename}.pdf">Download file</a>'
@@ -76,7 +78,7 @@ def OD_image(image):
     locations = get_crop_location(detector, image)   # [[x1,y1,x2,y2], [x1,y1,x2,y2], ...]
     drawed_img = draw_from_crop_locations(image, locations)
     croped_img = crop_from_crop_locations(image, locations)
-    return drawed_img, croped_img
+    return drawed_img, croped_img, locations
 
 
 #GAN
@@ -103,6 +105,12 @@ def GAN_image(images):
         outputs = tensor2im(output)
     return outputs
 
+@st.cache
+def seg_image(image):
+    pass
+    return image
+
+
 
 def session_init():
     #session initialize
@@ -116,101 +124,147 @@ def session_init():
         st.session_state['prev_menu'] = ''
 
 
-def upload_problem_images():
+def upload_problem_images(place, router):
     #TO DO : Get New Data, then reset cache
-    image_file = None
+    image_file = place.file_uploader("Upload Image",type=['png','jpeg','jpg'])
     img = None 
 
-    with st.form("Upload"):
-        image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
-        submit = st.form_submit_button("Upload")
-
-    if image_file and submit is not None:
+    if image_file is not None:
         img = load_image(image_file) #Get Image
         img = img.convert('RGB') #RGBA -> RGB
-        #50MB 이상이면 canvas에 그려지지 않음.. Resize?
-        #Change to ratio
-        st.image(img)
-    
-    return image_file, img
+        st.session_state["image"] = img #Give Image
+         #TO DO : Find Error cuase over 50MB sol:Resize, change to ratio (1080x1920)
+        place.image(img)
+        _, _, next = place.columns(3)
+
+        if next.button("다음"):
+            st.session_state["file_name"] = image_file.name
+            st.session_state["sub_page"] = "second"
+            page_chg('/',router)
+
+def run_object_detection(img, place, router):
+    locations = None
+    json_file = None
+    _, _, locations = OD_image(img)
+    if locations is not None:#TO DO: Check OD must return locations?
+        json_file = crop_editor.make_detection_canvas(locations)
+        #Get locations only once
+    if json_file is not None:
+        # Specify canvas parameters in application
+        place.write("Load가 끝날 때마다 천천히 조정해야 수정이 적용됨.")
+        select = place.selectbox("Tool:", ("크기 조정", "새로 그리기"))
+        drawing_mode = {"크기 조정":"transform","새로 그리기":"rect"}
+        bg_image = img
+        shape = np.shape(bg_image)
+
+        # Create a canvas component
+        canvas_result = st_canvas(
+            fill_color="rgba(255, 165, 0, 0.3)",  # Fixed fill color with some opacity
+            stroke_width= 1,
+            stroke_color= "#000",
+            background_color= "#eee",
+            background_image= bg_image,
+            update_streamlit= True, #real time update
+            height= shape[0], # To Do :  set ratio
+            width = shape[1],
+            drawing_mode=drawing_mode[select],
+            initial_drawing = json_file,
+            key = "canvas"
+        )
+        before, save, next = place.columns(3)
+        flag_b = before.button("이전")
+        flag_a = next.button("다음")
+        if save.button("SAVE"):
+            st.session_state["crop_image"] = None
+            cropped_imges = []
+            if json_file is None:
+                place.error("자를 문제가 없습니다.")
+            else:
+                for object in canvas_result.json_data["objects"]:
+                    x = object["left"]
+                    y = object["top"]
+                    w = object["width"]
+                    h = object["height"]
+
+                    area = (x,y,x+w,y+h)
+                    cropped_img = img.crop(area)
+                    cropped_imges.append(np.array(cropped_img))
+                st.session_state["crop_image"] = cropped_imges
+            
+            place.write("자른 문제 결과")
+            if st.session_state["crop_image"] is not None:
+                place.image(cropped_imges)
+
+            
+        if flag_b and (st.session_state["crop_image"] is not None):
+            st.session_state['sub_page'] = "first"
+            page_chg('/',router)
+        elif flag_a and (st.session_state["crop_image"] is not None):
+            st.session_state['sub_page'] = "third"
+            page_chg('/',router)
+        elif flag_b or flag_a:
+            place.error("자른 문제를 저장해주세요")
+            page_chg('/',router)
 
 
-def run_object_detection(img):
-    crop_images = None
-    if 'OD_button' not in st.session_state:
-        st.session_state.OD_button = False
-    if st.button("Crop"):
-        st.session_state.OD_button = True
-    if st.session_state.OD_button:
-        try:
-            od_img, crop_images = OD_image(img)
-        except UnboundLocalError:
-            st.error("Plz, input image")
+def run_gan(place, router):
+    name = st.session_state["file_name"]
+    crop_images = st.session_state["crop_image"]
+    gan_img = GAN_image(crop_images)
+
+    place.subheader("손글씨 지운 사진 확인하고, 문제의 과목과 답을 입력하세요.") #Show Clear image
+    if "idx" not in st.session_state:
+        st.session_state.idx = 0
+        st.session_state.subject = dict()
+        st.session_state.answer = dict()
+
+    before_p, save,next_p = place.columns(3)
+
+    if next_p.button("다음 문제"):
+        if st.session_state.idx <= len(gan_img)-2:
+            st.session_state.idx += 1
         else:
-            #Show Image Crop
-            st.subheader("Crop Result")
-            st.image(od_img)
-        #Use Crop Editor
-        flag_edit = st.checkbox("Do you need to fix?")
-        if flag_edit:
-            crop_editor.crop_editor(img) 
-            crop_images = crop_editor.crop_editor_json(img)
+            st.session_state.idx = len(gan_img)-1
+            st.warning("It's last problem")
 
-        if "OD_show_button" not in st.session_state:
-            st.session_state.OD_show_button = False
-
-        if st.button("Show"):
-            st.session_state.OD_show_button = True
-
-        if st.session_state.OD_show_button:
-            st.image(crop_images)
-
-    return crop_images
-
-
-def run_gan(crop_images,name):
-    if 'GAN_button' not in st.session_state:
-        st.session_state.GAN_button = False
-    if st.button("Clear"):
-        st.session_state.GAN_button = True
-    if st.session_state.GAN_button:
-        gan_img = GAN_image(crop_images)
-
-        st.subheader("Check Final Image & Save") #Show Clear image
-        if "idx" not in st.session_state:
+    if before_p.button("이전 문제"):
+        if st.session_state.idx >= 1:
+            st.session_state.idx -= 1
+        else:
             st.session_state.idx = 0
+            st.warning("It's first problem")
 
-        before, next, save = st.columns(3)
-
-        if next.button("Next"):
-            if st.session_state.idx <= len(gan_img)-2:
-                st.session_state.idx += 1
-            else:
-                st.session_state.idx = len(gan_img)-1
-                st.warning("It's last problem")
-
-        if before.button("Before"):
-            if st.session_state.idx >= 1:
-                st.session_state.idx -= 1
-            else:
-                st.session_state.idx = 0
-                st.warning("It's first problem")
-
-        if save.button("Save"):
-            mkdir("save")
-            for i in range(len(gan_img)):
-                save_name = 'save/%s_%s_%d.jpg'%(st.session_state['user_id'], name[:-4] , i)
-                cv2.imwrite(save_name,gan_img[i])
-                # save img path in db
-                query = """insert into problems (user_id, problem_file_name, answer) values ('%s', '%s', '%s');"""%(st.session_state['user_id'], save_name, '1')
-                rowcount = run_insert(query)
-                if rowcount!=0:
-                    st.info('문제가 저장되었습니다.')
-
-        st.image(gan_img[st.session_state.idx])
+    if save.button("Save"):
+        if os.path.isdir("save")==False:
+            os.mkdir("save")
+        
+        for i in range(len(gan_img)):
+            save_name = 'save/%s_%s_%d.jpg'%(st.session_state['user_id'], st.session_state["file_name"][:-4] , i)
+            #save image to file save/
+            cv2.imwrite(save_name,gan_img[i])
+            # save img path in db
+            query = """insert into problems (user_id, problem_file_name, answer) values ('%s', '%s', '%s');"""%(st.session_state['user_id'], save_name, '1')
+            rowcount = run_insert(query)
+            if rowcount!=0:
+                st.info('문제가 저장되었습니다.')
+    
+    place.image(gan_img[st.session_state.idx])
+    col1, col2 = place.columns(2)
+    sub = col1.text_input("과목은?")
+    ans = col2.text_input("정답은?")
+    #TO DO : SAVE
 
 
-def make_problem_pdf():
+    before, _, next = place.columns(3)
+    if before.button("문제 자르기"):
+        st.session_state['sub_page'] = "second"
+        page_chg('/',router)
+    elif next.button("PDF 만들기"):
+        st.session_state['sub_page'] = "fourth"
+        page_chg('/',router)
+
+
+def make_problem_pdf(place, router):
     export_as_pdf = st.button("Export Report")
     if export_as_pdf:
         if os.path.isdir("save"):
@@ -222,9 +276,14 @@ def make_problem_pdf():
             pdf.set_font("Arial", "B", 16)
             html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
             st.markdown(html, unsafe_allow_html = True)
-        else:
-            st.error("plz, save image")
-
+    
+    col1, col2 = place.columns(2)
+    if col1.button("다시 입력하기"):
+        st.session_state['sub_page'] = "third"
+        page_chg('/',router)
+    if col2.button("처음으로"):
+        st.session_state['sub_page'] = "first"
+        page_chg('/',router)
 
 def show_images(images):
     for image_f in images:
@@ -261,6 +320,7 @@ def streamlit_run():
                 st.session_state['user_name'] = user_name
                 st.session_state['wrong_num'] = wrong_num
                 print("로그인 성공")
+                page_chg('/',router)
 
             if btn2.button('회원가입') :
                 page_chg('/join', router)
@@ -277,7 +337,6 @@ def streamlit_run():
             if st.button('submit', key='join_btn'):
                 result = join(user_id, user_pw, user_name)
                 if result!=0 :
-                    
                     st.session_state['after_join']==True
                     page_chg('/', router)
                     
@@ -289,7 +348,7 @@ def streamlit_run():
         if user_info.button('logout'):
             logout()
         
-        menu = ["All","MakeImage","MakePDF","Answer","About", "Show All"]
+        menu = ["실행","MakeImage","MakePDF","Answer","About", "Show All"]
         choice = st.sidebar.selectbox("Menu", menu)
         st.sidebar.text(st.session_state['prev_menu'])
 
@@ -300,26 +359,39 @@ def streamlit_run():
             for key in st.session_state.keys():
                 if key not in ['wrong_num', 'user_name', 'user_id', 'auth_status', 'prev_menu']:
                     del st.session_state[key]
+            #four session
+            st.session_state['sub_page'] = 'first'
 
         # main content
-        st.title("Math wrong answer editor")
+        st.title("수학 오답 노트 생성기")
 
-        if choice == "All":
-            st.header("All part")
-            st.subheader("1. Upload your problem images")
-            crop_images = None
-            image_file, img = upload_problem_images()
-            
-            st.subheader("2. Check wrong image, and you can edit")
-            if img is not None:
-                crop_images = run_object_detection(img)
+        if choice == "실행":
+            st.sidebar.text("1: 파일 올리기")
+            st.sidebar.text("2: 이미지 자르기")
+            st.sidebar.text("3: 손글씨 지우기")
+            st.sidebar.text("4: PDF 출력")
 
-            st.subheader("3. Clear handwriting")
-            if crop_images is not None:
-                run_gan(crop_images, image_file.name)
+            #Use empty - Container
+            place = st.empty()
 
-            st.subheader("4. Make Problem PDF")
-            make_problem_pdf()
+            #Upload problem
+            if st.session_state["sub_page"] == "first":
+                first = place.container()
+                upload_problem_images(first, router)
+            #Crop problem
+            elif st.session_state["sub_page"] == "second":
+                img = st.session_state["image"]
+                second = place.container()
+                run_object_detection(img,second, router)
+            #Erase Handwriting
+            elif st.session_state['sub_page'] == "third":
+                third = place.container()
+                run_gan(third, router)
+            #Make PDF
+            elif st.session_state["sub_page"] == "fourth":
+                fourth = place.container()
+                fourth.subheader("4. Make Problem PDF")
+                make_problem_pdf(fourth, router)
 
         elif choice == "Show All" :
             images =  run_select('SELECT * from problems where user_id="%s";' % st.session_state['user_id'])
@@ -332,18 +404,24 @@ def streamlit_run():
             if image_file is not None:
                 #Get Before Image
                 img = load_image(image_file)
+                img = img.convert('RGB') #RGBA -> RGB
                 st.subheader("Before")
                 st.image(img, use_column_width = True)
 
-                od_img, crop_images = OD_image(img)
-                gan_img = GAN_image(crop_images)
+                od_images,crop_images, _ = OD_image(img)
+                seg_img = seg_image(crop_images)
+                gan_img = GAN_image(seg_img)
 
                 flag_od = st.checkbox("Object Detection")
+                flag_seg = st.checkbox("segmentation")
                 flag_gan = st.checkbox("GAN")
 
                 if flag_od:
                     st.subheader("Object Detection")
-                    st.image(od_img, use_column_width = True)
+                    st.image(od_images, use_column_width = True)
+                if flag_seg:
+                    st.subheader('Segmentation')
+                    st.image(seg_img[0],use_column_width = True)
                 if flag_gan:
                     st.subheader("GAN")
                     st.image(gan_img[0], use_column_width = True)

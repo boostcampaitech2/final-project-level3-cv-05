@@ -1,1 +1,5 @@
 *.csv
+checkpoints/
+__pycache__/
+models/__pycache__
+save/
