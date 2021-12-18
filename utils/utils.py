@@ -1,30 +1,28 @@
 import streamlit as st
 import mysql.connector
 import extra_streamlit_components as stx
+import os
 
 conn = mysql.connector.connect(**st.secrets["mysql"])
 print("connected" ,conn.is_connected())
 
 @st.cache(ttl=600)
 def run_select(query):
-    with conn.cursor() as cur:
-        cur.execute(query)
-        return cur.fetchall()
+    cur = conn.cursor()
+    cur.execute(query)
+    return cur.fetchall()
 
 @st.cache(ttl=600)
 def run_insert(query):
-    with conn.cursor() as cur:
-        cur.execute(query)
-        conn.commit()
-        return cur.rowcount
-
-
+    cur = conn.cursor()
+    cur.execute(query)
+    conn.commit()
+    return cur.rowcount
 
 
 def page_chg(key, router):
     st.session_state['page'] = key
     router.route(key)
-
 
 
 def login(user_id, user_pw):
@@ -41,6 +39,7 @@ def login(user_id, user_pw):
         st.session_state['auth_status'] = False
         return False, False, False
 
+
 def logout():
     st.session_state['auth_status'] = False
     
@@ -56,3 +55,6 @@ def join(user_id, user_pw, user_name):
         return rowcount
         
 
+def mkdir(dir_):
+    if os.path.isdir(dir_) == False: #Change path
+        os.mkdir(dir)

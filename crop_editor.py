@@ -6,6 +6,7 @@ from streamlit_drawable_canvas import st_canvas
 import json
 import copy
 import numpy as np
+import os
 
 #pip install streamlit-drawable-canvas 
 #설치해야함.
@@ -98,6 +99,23 @@ def crop_editor(image):
     
     if st.button("Save dataframe"):
         open('data.json','w').write(json.dumps(canvas_json, indent=4))
+
+
+def crop_editor_json(img):
+    if(os.path.isfile("./data.json")):
+        crop_images = list()
+        with open("data.json") as json_file:
+            json_data = json.load(json_file)
+            json_object = json_data["objects"]  
+            for ob in json_object:
+                x = ob["left"]
+                y = ob["top"]
+                w = ob["width"]
+                h = ob["height"] 
+                area = (x,y,x+w,y+h)
+                cropped_img = img.crop(area)
+                crop_images.append(np.array(cropped_img))
+            return crop_images
 
 
 if __name__ == "__main__":
