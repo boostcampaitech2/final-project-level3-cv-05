@@ -150,7 +150,7 @@ def run_object_detection(img):
         flag_edit = st.checkbox("Do you need to fix?")
         if flag_edit:
             crop_editor.crop_editor(img) 
-            crop_deitor.crop_editor_json(img)
+            crop_editor.crop_editor_json(img)
 
         if "OD_show_button" not in st.session_state:
             st.session_state.OD_show_button = False
@@ -222,7 +222,7 @@ def make_problem_pdf():
             st.error("plz, save image")
 
 
-def show_images(iamges):
+def show_images(images):
     for image_f in images:
         image = Image.open(image_f[2])
         st.image(image)
