@@ -118,6 +118,9 @@ def session_init():
 
 def upload_problem_images():
     #TO DO : Get New Data, then reset cache
+    image_file = None
+    img = None 
+
     with st.form("Upload"):
         image_file = st.file_uploader("Upload Image",type=['png','jpeg','jpg'])
         submit = st.form_submit_button("Upload")
@@ -133,6 +136,7 @@ def upload_problem_images():
 
 
 def run_object_detection(img):
+    crop_images = None
     if 'OD_button' not in st.session_state:
         st.session_state.OD_button = False
     if st.button("Crop"):
@@ -150,7 +154,7 @@ def run_object_detection(img):
         flag_edit = st.checkbox("Do you need to fix?")
         if flag_edit:
             crop_editor.crop_editor(img) 
-            crop_editor.crop_editor_json(img)
+            crop_images = crop_editor.crop_editor_json(img)
 
         if "OD_show_button" not in st.session_state:
             st.session_state.OD_show_button = False
@@ -164,7 +168,7 @@ def run_object_detection(img):
     return crop_images
 
 
-def run_gan(crop_images):
+def run_gan(crop_images,name):
     if 'GAN_button' not in st.session_state:
         st.session_state.GAN_button = False
     if st.button("Clear"):
@@ -195,7 +199,7 @@ def run_gan(crop_images):
         if save.button("Save"):
             mkdir("save")
             for i in range(len(gan_img)):
-                save_name = 'save/%s_%s_%d.jpg'%(st.session_state['user_id'], image_file.name[:-4] , i)
+                save_name = 'save/%s_%s_%d.jpg'%(st.session_state['user_id'], name[:-4] , i)
                 cv2.imwrite(save_name,gan_img[i])
                 # save img path in db
                 query = """insert into problems (user_id, problem_file_name, answer) values ('%s', '%s', '%s');"""%(st.session_state['user_id'], save_name, '1')
@@ -303,20 +307,24 @@ def streamlit_run():
         if choice == "All":
             st.header("All part")
             st.subheader("1. Upload your problem images")
+            crop_images = None
             image_file, img = upload_problem_images()
             
             st.subheader("2. Check wrong image, and you can edit")
-            crop_images = run_object_detection(img)
+            if img is not None:
+                crop_images = run_object_detection(img)
 
             st.subheader("3. Clear handwriting")
-            run_gan(crop_images)
+            if crop_images is not None:
+                run_gan(crop_images, image_file.name)
 
             st.subheader("4. Make Problem PDF")
             make_problem_pdf()
 
         elif choice == "Show All" :
             images =  run_select('SELECT * from problems where user_id="%s";' % st.session_state['user_id'])
-            show_images(iamges)
+            if images is not None:
+                show_images(images)
         
         elif choice == "MakeImage":
             st.subheader("Upload your problem images")
