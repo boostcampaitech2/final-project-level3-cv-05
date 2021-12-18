@@ -243,7 +243,7 @@ def run_gan(place, router):
             #save image to file save/
             cv2.imwrite(save_name,gan_img[i])
             # save img path in db
-            query = """insert into problems (user_id, problem_file_name, answer) values ('%s', '%s', '%s');"""%(st.session_state['user_id'], save_name, '1')
+            query = 'insert into problems (user_id, problem_file_name, answer) values ("%s", "%s", "%s");'%(st.session_state['user_id'], save_name, "1")
             rowcount = run_insert(query)
             if rowcount!=0:
                 st.info('문제가 저장되었습니다.')
@@ -347,6 +347,7 @@ def streamlit_run():
         user_info.subheader('%s님 안녕하세요!'% st.session_state['user_name'])
         if user_info.button('logout'):
             logout()
+            page_chg('/',router)
         
         menu = ["실행","MakeImage","MakePDF","Answer","About", "Show All"]
         choice = st.sidebar.selectbox("Menu", menu)
