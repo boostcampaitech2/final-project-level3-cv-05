@@ -135,6 +135,7 @@ def streamlit_run():
             elif st.session_state["sub_page"] == "fourth":
                 fourth = place.container()
                 fourth.subheader("4. Make Problem PDF")
+
                 images =  run_select('SELECT * from problems where user_id="%s";' % st.session_state['user_id'])
                 make_problem_pdf(fourth, router, images)
         elif choice == "Show All" :
