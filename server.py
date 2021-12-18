@@ -164,7 +164,7 @@ def run_object_detection(img):
     return crop_images
 
 
-def run_gan():
+def run_gan(crop_images):
     if 'GAN_button' not in st.session_state:
         st.session_state.GAN_button = False
     if st.button("Clear"):
@@ -309,7 +309,7 @@ def streamlit_run():
             crop_images = run_object_detection(img)
 
             st.subheader("3. Clear handwriting")
-            run_gan()
+            run_gan(crop_images)
 
             st.subheader("4. Make Problem PDF")
             make_problem_pdf()
