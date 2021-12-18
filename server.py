@@ -132,7 +132,7 @@ def upload_problem_images():
     return image_file, img
 
 
-def run_object_detection():
+def run_object_detection(img):
     if 'OD_button' not in st.session_state:
         st.session_state.OD_button = False
     if st.button("Crop"):
@@ -306,7 +306,7 @@ def streamlit_run():
             image_file, img = upload_problem_images()
             
             st.subheader("2. Check wrong image, and you can edit")
-            crop_images = run_object_detection()
+            crop_images = run_object_detection(img)
 
             st.subheader("3. Clear handwriting")
             run_gan()
