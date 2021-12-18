@@ -50,7 +50,7 @@ def join(user_id, user_pw, user_name):
         st.error('같은 아이디가 존재합니다.')
         return 0
     else:
-        query = """insert into users values (%s, %s, %s, %d);"""%(user_id, user_pw, user_name, 0)
+        query = 'insert into users values ("%s", "%s", "%s", "%d");'%(user_id, user_pw, user_name, 0)
         rowcount = run_insert(query)
         return rowcount
         
