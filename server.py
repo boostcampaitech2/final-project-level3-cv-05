@@ -145,14 +145,10 @@ def upload_problem_images(place, router):
 
 def run_object_detection(img, place, router):
     if 'locations' not in st.session_state:
-        #_, _, st.session_state['locations'] = OD_image(img)
-        st.session_state['locations'] = None
-    if 'json_file' not in st.session_state:
-        #st.session_state['json_file'] = crop_editor.make_detection_canvas(st.session_state['locations'])
-        st.session_state['json_file'] = None
-    if 'flag_od' not in st.session_state:
         _, _, st.session_state['locations'] = OD_image(img)
-        st.session_state['flag_od'] = True
+    if 'json_file' not in st.session_state:
+        st.session_state['json_file'] = crop_editor.make_detection_canvas(st.session_state['locations'])
+
     if st.session_state['locations'] is not None:#TO DO: Check OD must return locations?
         st.session_state['json_file'] = crop_editor.make_detection_canvas(st.session_state['locations'])
     #Get locations only once
@@ -165,7 +161,7 @@ def run_object_detection(img, place, router):
         shape = np.shape(bg_image)
 
         # Create a canvas component
-        canvas = st_canvas(
+        canvas_result = st_canvas(
             fill_color="rgba(255, 165, 0, 0.3)",  # Fixed fill color with some opacity
             stroke_width= 1,
             stroke_color= "#000",
@@ -180,12 +176,6 @@ def run_object_detection(img, place, router):
             initial_drawing =  st.session_state['json_file'],
             key = "canvas"
         )
-
-        canvas_result = st_canvas(
-            height= shape[0], # To Do :  set ratio
-            width = shape[1],
-            background_image= bg_image,
-            initial_drawing = canvas.json_data)
 
         before, save, next = place.columns(3)
         images = place.empty()
@@ -216,7 +206,6 @@ def run_object_detection(img, place, router):
             
                 place.write("자른 문제 결과")
                 if st.session_state["crop_image"] is not None:
-
                     images.image(cropped_imges)
 
         if flag_b and (st.session_state["crop_image"] is not None):
