@@ -51,6 +51,7 @@ def join(user_id, user_pw, user_name):
         return 0
     else:
         query = 'insert into users values ("%s", "%s", "%s", %d);'%(user_id, user_pw, user_name, 0)
+
         rowcount = run_insert(query)
         return rowcount
         
