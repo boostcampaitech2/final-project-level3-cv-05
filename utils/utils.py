@@ -58,4 +58,4 @@ def join(user_id, user_pw, user_name):
 
 def mkdir(dir_):
     if os.path.isdir(dir_) == False: #Change path
-        os.mkdir(dir)
+        os.mkdir(dir_)

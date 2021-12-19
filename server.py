@@ -3,7 +3,8 @@ from PIL import Image
 import streamlit as st
 import extra_streamlit_components as stx
 from utils.utils import *
-from step import upload_problem_images,run_object_detection,make_problem_pdf, run_gan
+from step import (upload_problem_images, make_problem_pdf,
+                  run_object_detection, run_gan, run_seg)
 
 #streamlit run server.py --server.address=127.0.0.1
 #이렇게 하면 브라우저가 Local로 띄워짐.
@@ -82,7 +83,7 @@ def streamlit_run():
     else:
         # sidebar content
         user_info = st.sidebar.container()
-        user_info.subheader('%s님 안녕하세요!'% st.session_state['user_name'])
+        user_info.subheader(f'{st.session_state['user_name']}님 안녕하세요!')
         if user_info.button('logout'):
             logout()
             page_chg('/',router)
@@ -132,10 +133,10 @@ def streamlit_run():
                 fourth = place.container()
                 fourth.subheader("4. Make Problem PDF")
 
-                images =  run_select('SELECT * from problems where user_id="%s";' % st.session_state['user_id'])
+                images =  run_select(f'SELECT * from problems where user_id="{st.session_state['user_id']}";')
                 make_problem_pdf(fourth, router, images)
         elif choice == "Show All" :
-            images =  run_select('SELECT * from problems where user_id="%s";' % st.session_state['user_id'])
+            images =  run_select(f'SELECT * from problems where user_id="{% st.session_state['user_id']}";')
             if images is not None:
                 show_images(images)
             else:
