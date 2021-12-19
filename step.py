@@ -57,6 +57,7 @@ def run_object_detection(img, place, router):
         drawing_mode = {"크기 조정":"transform","새로 그리기":"rect"}
         bg_image = img
         shape = np.shape(bg_image)
+        place.write("다 했으면, 아래 canvas 아래에서 저장 버튼을 눌러주세요.")
 
         # Create a canvas component
         canvas_result = st_canvas(
@@ -105,10 +106,10 @@ def run_object_detection(img, place, router):
                 for cnt in contours:
                     x,y,w,h=cnt
                     if (x,x+w,y,y+h) == (0,1000,0,900):
-                        print("yes")
+                        #print("yes")
                         continue
                     area = (x,y,x+w,y+h)
-                    print(area)
+                    #print(area)
                     cropped_img = img.crop(area)
                     cropped_imges.append(np.array(cropped_img))
                 st.session_state["crop_image"] = cropped_imges
@@ -123,6 +124,10 @@ def run_object_detection(img, place, router):
         elif flag_a: #only push button
             place.error("자른 문제를 저장해주세요")
 
+@st.cache
+def seg_image(image):
+    pass
+    return image
 
 def run_gan(place, router):
     crop_images = st.session_state["crop_image"]
@@ -201,9 +206,9 @@ def run_gan(place, router):
 
     _, _, next = place.columns(3)
     if next.button("PDF 만들기"):
+        del st.session_state['idx']
         st.session_state['sub_page'] = "fourth"
         page_chg('/',router)
-
 
 def make_problem_pdf(place, router, images):
     #Choose Problem
@@ -248,7 +253,7 @@ def make_problem_pdf(place, router, images):
         else:
             st.warning("문제가 끝났습니다.")
     
-    print(st.session_state["pick_problem"])
+    #print(st.session_state["pick_problem"])
 
     export_as_problem_pdf = st.button("Export Problem Report")
     if export_as_problem_pdf:
