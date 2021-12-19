@@ -40,12 +40,13 @@ def streamlit_run():
     session_init()
     
     # before login
-    if st.session_state['auth_status'] != True:
+    sess_state = st.session_state
+    if sess_state['auth_status'] != True:
         # login page
-        if st.session_state['stx_router_route'] == '/' :
-            if(st.session_state['after_join'] == True):
+        if sess_state['stx_router_route'] == '/' :
+            if(sess_state['after_join'] == True):
                 st.info('회원가입이 완료되었습니다. 로그인을 해주세요.')
-                st.session_state['after_join'] == False
+                sess_state['after_join'] == False
 
             login_box = st.container()
             login_box.header('Login')
@@ -55,16 +56,16 @@ def streamlit_run():
             btn1, btn2, _ = login_box.columns((1, 1.5, 5))
             if btn1.button('로그인'):
                 user_id, user_name, wrong_num = login(user_id, user_pw)
-                st.session_state['user_id'] = user_id
-                st.session_state['user_name'] = user_name
-                st.session_state['wrong_num'] = wrong_num
+                sess_state['user_id'] = user_id
+                sess_state['user_name'] = user_name
+                sess_state['wrong_num'] = wrong_num
                 print("로그인 성공")
                 page_chg('/',router)
 
             if btn2.button('회원가입') :
                 page_chg('/join', router)
         # join page
-        elif st.session_state['stx_router_route'] == '/join' :
+        elif stx_router_route == '/join' :
             st.title('회원가입')
             st.subheader('아이디')
             user_id = st.text_input("아이디를 입력해주세요")
@@ -76,31 +77,31 @@ def streamlit_run():
             if st.button('submit', key='join_btn'):
                 result = join(user_id, user_pw, user_name)
                 if result!=0 :
-                    st.session_state['after_join']==True
+                    sess_state['after_join']==True
                     page_chg('/', router)
                     
     # after login
     else:
         # sidebar content
         user_info = st.sidebar.container()
-        user_info.subheader(f'{st.session_state['user_name']}님 안녕하세요!')
+        user_info.subheader('%s님 안녕하세요!'% sess_state['user_name'])
         if user_info.button('logout'):
             logout()
             page_chg('/',router)
         
         menu = ["실행","MakePDF","Answer","About", "Show All"]
         choice = st.sidebar.selectbox("Menu", menu)
-        st.sidebar.text(st.session_state['prev_menu'])
+        st.sidebar.text(sess_state['prev_menu'])
 
         # session reset
-        if st.session_state['prev_menu'] != choice:
-            st.session_state['prev_menu'] = choice
+        if sess_state['prev_menu'] != choice:
+            sess_state['prev_menu'] = choice
             #Reset cache
-            for key in st.session_state.keys():
+            for key in sess_state.keys():
                 if key not in ['wrong_num', 'user_name', 'user_id', 'auth_status', 'prev_menu']:
-                    del st.session_state[key]
+                    del sess_state[key]
             #four session
-            st.session_state['sub_page'] = 'first'
+            sess_state['sub_page'] = 'first'
 
         # main content
         st.title("수학 오답 노트 생성기")
@@ -115,28 +116,29 @@ def streamlit_run():
             place = st.empty()
 
             #Upload problem
-            if st.session_state["sub_page"] == "first":
+            sub_page = sess_state["sub_page"]
+            if sub_page == "first":
                 first = place.container()
                 upload_problem_images(first, router)
             #Crop problem
-            elif st.session_state["sub_page"] == "second":
-                img = st.session_state["image"]
+            elif sub_page == "second":
+                img = sess_state["image"]
                 second = place.container()
                 run_object_detection(img,second, router)
             #Erase Handwriting
-            elif st.session_state['sub_page'] == "third":
+            elif sub_page == "third":
                 third = place.container()
                 #Segmentation & gan
                 run_gan(third, router)
             #Make PDF
-            elif st.session_state["sub_page"] == "fourth":
+            elif sub_page == "fourth":
                 fourth = place.container()
                 fourth.subheader("4. Make Problem PDF")
 
-                images =  run_select(f'SELECT * from problems where user_id="{st.session_state['user_id']}";')
+                images =  run_select('SELECT * from problems where user_id="%s";' % sess_state['user_id'])
                 make_problem_pdf(fourth, router, images)
         elif choice == "Show All" :
-            images =  run_select(f'SELECT * from problems where user_id="{% st.session_state['user_id']}";')
+            images =  run_select('SELECT * from problems where user_id="%s";' % sess_state['user_id'])
             if images is not None:
                 show_images(images)
             else:
