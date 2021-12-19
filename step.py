@@ -86,20 +86,36 @@ def run_object_detection(img, place, router):
             if canvas_result.json_data["objects"] is None:
                 place.error("자를 문제가 없습니다.")
             else:
-                #TO DO: Image masking
-                for object in canvas_result.json_data["objects"]:
-                    x = object["left"]
-                    y = object["top"]
-                    w = object["width"]
-                    h = object["height"]
+                #Crop Image masking
+                mask = canvas_result.image_data
+                img_float32 = mask.astype("uint8")
+                new = cv2.cvtColor(img_float32,cv2.COLOR_BGRA2BGR)
+                gray = cv2.cvtColor(new,cv2.COLOR_BGR2GRAY) 
+                ret2,mask = cv2.threshold(gray,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+                
+                kernel=np.ones((3,3),np.uint8)
+                dilated=cv2.dilate(mask,kernel,iterations=3)
+                # dilated = dilated.astype("uint8")
 
+                ### finding contours, can use connectedcomponents aswell
+                contours,_ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+                contours=[cv2.boundingRect(cnt) for cnt in contours]
+
+                for cnt in contours:
+                    x,y,w,h=cnt
+                    if (x,x+w,y,y+h) == (0,1000,0,900):
+                        print("yes")
+                        continue
                     area = (x,y,x+w,y+h)
+                    print(area)
                     cropped_img = img.crop(area)
                     cropped_imges.append(np.array(cropped_img))
                 st.session_state["crop_image"] = cropped_imges
+                
                 place.write("자른 문제 결과")
                 if st.session_state["crop_image"] is not None:
-                    images.image(cropped_imges)
+                    place.image(cropped_imges)
 
         if flag_a and (st.session_state["crop_image"] is not None):
             st.session_state['sub_page'] = "third"
