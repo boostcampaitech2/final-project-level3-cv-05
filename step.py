@@ -264,6 +264,7 @@ def make_problem_pdf(place, router, images):
             pdf = FPDF()
             x, y, w, h=0, 10, 120, 100
             for i in st.session_state["pick_problem"]:
+                print(images[i])
                 img = images[i][2]
                 pdf.add_page()
                 pdf.image(f"{img}", x=x, y=y, w=w, h=h)

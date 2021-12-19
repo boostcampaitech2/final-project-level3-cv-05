@@ -99,7 +99,7 @@ def streamlit_run():
                 if key not in ['wrong_num', 'user_name', 'user_id', 'auth_status', 'prev_menu']:
                     del st.session_state[key]
             #four session
-            st.session_state['sub_page'] = 'fourth'
+            st.session_state['sub_page'] = 'first'
 
         # main content
         st.title("수학 오답 노트 생성기")
