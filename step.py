@@ -224,24 +224,27 @@ def make_problem_pdf(place, router, images):
     try:
         img = images[st.session_state["idx_p"]]
         img1.image(Image.open(img[2]))
-        if ch1.button("1"):
+        if ch1.button("{}".format(st.session_state["idx_p"]+1)):
             st.session_state["pick_problem"].append(st.session_state["idx_p"])
+            place.success("{} 번 문제 저장".format(st.session_state["idx_p"]+1))
     except IndexError:
         img1.empty()
     
     try:
         img = images[st.session_state["idx_p"] + 1]
         img2.image(Image.open(img[2]))
-        if ch2.button("2"):
+        if ch2.button("{}".format(st.session_state["idx_p"]+2)):
             st.session_state["pick_problem"].append(st.session_state["idx_p"]+1)
+            place.success("{} 번 문제 저장".format(st.session_state["idx_p"]+2))
     except IndexError:
         img2.empty()
     
     try:
         img = images[st.session_state["idx_p"] + 2]
         img3.image(Image.open(img[2]))
-        if ch3.button("3"):
+        if ch3.button("{}".format(st.session_state["idx_p"]+3)):
             st.session_state["pick_problem"].append(st.session_state["idx_p"]+2)
+            place.success("{} 번 문제 저장".format(st.session_state["idx_p"]+3))
     except IndexError:
         img3.empty()
 
