@@ -67,7 +67,7 @@ def preprocess_img(img):
 
     return img, img_meta
 
-def get_crop_location(model, img, uncorrect=True, score_thresh=0.5):
+def get_crop_location(model, img, uncorrect=True, score_thresh=0.3):
     """
 
     return crop_locations : [[x1,y1,x2,y2], ...]

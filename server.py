@@ -65,7 +65,7 @@ def streamlit_run():
             if btn2.button('회원가입') :
                 page_chg('/join', router)
         # join page
-        elif stx_router_route == '/join' :
+        elif sess_state['stx_router_route'] == '/join' :
             st.title('회원가입')
             st.subheader('아이디')
             user_id = st.text_input("아이디를 입력해주세요")
