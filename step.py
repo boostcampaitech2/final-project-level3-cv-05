@@ -5,6 +5,7 @@ from utils.utils import *
 
 from gan import GAN_image
 from detection import OD_image
+from segmentation import seg_image
 import numpy as np
 
 import cv2
@@ -144,12 +145,11 @@ def run_object_detection(img, place, router):
                 st.session_state['sub_page'] = "third"
                 page_chg('/',router)
 
-@st.cache
-def run_seg(image):
-    pass
-    return image
 
-def run_gan(place, router):
+
+def run_seg(place, router):
+    crop_images = st.session_state["crop_image"]
+    gan_images = None
 
 
     place.subheader("손글씨 지운 사진 확인하고, 문제의 과목과 답을 입력하세요.") #Show Clear image
@@ -161,8 +161,14 @@ def run_gan(place, router):
         st.session_state["gan_images"] = GAN_image(st.session_state["crop_images"])
         del st.session_state["crop_images"]
 
-    if "gan_images" in st.session_state:
-        place.image(st.session_state["gan_images"][st.session_state['idx']])
+
+    if gan_images is None:
+        gan_images = seg_image(crop_images)
+    else:
+        pass
+
+    place.image(gan_images[st.session_state['idx']])
+
     before_p, save, next_p = place.columns(3)
     sub = place.text_input("과목은?")
     ans = place.text_input("정답은?")
