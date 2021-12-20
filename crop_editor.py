@@ -13,12 +13,11 @@ def make_detection_canvas(points):
 
     objects_list = []
 
-    print(points)
-    for x,y,width,height in points:
-        object['left'] = x
-        object['top'] = y
-        object['width'] = width - x
-        object['height'] = height - y
+    for x1,y1,x2,y2 in points:
+        object['left'] = x1
+        object['top'] = y1
+        object['width'] = x2 - x1
+        object['height'] = y2 - y1
 
         copy_dict = copy.deepcopy(object)
         objects_list.append(copy_dict)
