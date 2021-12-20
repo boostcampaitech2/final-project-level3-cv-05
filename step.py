@@ -64,12 +64,9 @@ def run_object_detection(img, place, router):
     if flag_a and (st.session_state["crop_image"] is not None):
         st.session_state['sub_page'] = "third"
         page_chg('/',router)
-@st.cache
-def run_seg(image):
-    pass
-    return image
 
-def run_gan(place, router):
+
+def run_seg(place, router):
     crop_images = st.session_state["crop_image"]
     gan_images = None
 

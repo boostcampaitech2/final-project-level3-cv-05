@@ -4,7 +4,7 @@ import streamlit as st
 import extra_streamlit_components as stx
 from utils.utils import *
 from step import (upload_problem_images, make_problem_pdf,
-                  run_object_detection, run_gan, run_seg)
+                  run_object_detection, run_seg)
 
 #streamlit run server.py --server.address=127.0.0.1
 #이렇게 하면 브라우저가 Local로 띄워짐.
@@ -129,7 +129,7 @@ def streamlit_run():
             elif sub_page == "third":
                 third = place.container()
                 #Segmentation & gan
-                run_gan(third, router)
+                run_seg(third, router)
             #Make PDF
             elif sub_page == "fourth":
                 fourth = place.container()
