@@ -46,85 +46,22 @@ def upload_problem_images(place, router):
 
 def run_object_detection(img, place, router):
     if 'locations' not in st.session_state:
-        _, _, st.session_state['locations'] = OD_image(img)
+        st.session_state['drawed_img'], st.session_state['crop_image'], st.session_state['locations'] = OD_image(img)
     if 'json_file' not in st.session_state:
         st.session_state['json_file'] = crop_editor.make_detection_canvas(st.session_state['locations'])
 
-    #Get locations only once
-    if st.session_state['json_file'] is not None:
-        # Specify canvas parameters in application
-        place.write("Load가 끝날 때마다 천천히 조정해야 수정이 적용됨.")
-        select = place.selectbox("Tool:", ("크기 조정", "새로 그리기"))
-        drawing_mode = {"크기 조정":"transform","새로 그리기":"rect"}
-        bg_image = img
-        shape = np.shape(bg_image)
-        place.write("다 했으면, 아래 canvas 아래에서 저장 버튼을 눌러주세요.")
+    _, _, next = place.columns(3)
+    place.image(st.session_state["drawed_img"])
 
-        # Create a canvas component
-        canvas_result = st_canvas(
-            fill_color="rgba(255, 165, 0, 0.3)",  # Fixed fill color with some opacity
-            stroke_width= 1,
-            stroke_color= "#000",
-            background_color= "#eee",
-            background_image= bg_image,
-            update_streamlit= False, #real time update
-            height= shape[0], # To Do :  set ratio
-            width = shape[1],
-            drawing_mode=drawing_mode[select],
-            #이동은 되는데, 크기 조정이 안됨. 
-            #json file이 아닌 image file로하기.
-            initial_drawing =  st.session_state['json_file'],
-            key = "canvas"
-        )
+    flag_a = next.button("다음")
 
-        _, save, next = place.columns(3)
-        images = place.empty()
-        flag_a = next.button("다음")
-        if 'crop_image' not in st.session_state:
-            st.session_state["crop_image"] = None
+    place.write("자른 문제 결과")
+    if st.session_state["crop_image"] is not None:
+        place.image(st.session_state['crop_image'])
 
-        if save.button("SAVE"):
-            cropped_imges = []
-            if canvas_result.json_data["objects"] is None:
-                place.error("자를 문제가 없습니다.")
-            else:
-                #Crop Image masking
-                mask = canvas_result.image_data
-                img_float32 = mask.astype("uint8")
-                new = cv2.cvtColor(img_float32,cv2.COLOR_BGRA2BGR)
-                gray = cv2.cvtColor(new,cv2.COLOR_BGR2GRAY) 
-                ret2,mask = cv2.threshold(gray,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
-                
-                kernel=np.ones((3,3),np.uint8)
-                dilated=cv2.dilate(mask,kernel,iterations=3)
-                # dilated = dilated.astype("uint8")
-
-                ### finding contours, can use connectedcomponents aswell
-                contours,_ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-                contours=[cv2.boundingRect(cnt) for cnt in contours]
-
-                for cnt in contours:
-                    x,y,w,h=cnt
-                    if (x,x+w,y,y+h) == (0,1000,0,900):
-                        #print("yes")
-                        continue
-                    area = (x,y,x+w,y+h)
-                    #print(area)
-                    cropped_img = img.crop(area)
-                    cropped_imges.append(np.array(cropped_img))
-                st.session_state["crop_image"] = cropped_imges
-                
-                place.write("자른 문제 결과")
-                if st.session_state["crop_image"] is not None:
-                    place.image(cropped_imges)
-
-        if flag_a and (st.session_state["crop_image"] is not None):
-            st.session_state['sub_page'] = "third"
-            page_chg('/',router)
-        elif flag_a: #only push button
-            place.error("자른 문제를 저장해주세요")
-
+    if flag_a and (st.session_state["crop_image"] is not None):
+        st.session_state['sub_page'] = "third"
+        page_chg('/',router)
 @st.cache
 def seg_image(image):
     pass
@@ -140,8 +77,6 @@ def run_gan(place, router):
     #해당 페이지에서 다시 새로고침하면, 뜨지 않음.
     if "idx" not in st.session_state:
         st.session_state['idx'] = 0
-        st.session_state['subject'] = dict()
-        st.session_state['answer'] = dict()
 
     if gan_images is None:
         gan_images = GAN_image(crop_images)
@@ -149,21 +84,16 @@ def run_gan(place, router):
         pass
 
     place.image(gan_images[st.session_state['idx']])
-    #write subject and answer if saved
-    if (st.session_state['idx'] in st.session_state['subject'].keys()) and (st.session_state["idx"] in st.session_state["answer"].keys()):
-        place.write("과목 : {}, 정답 : {}".format(st.session_state['subject'][st.session_state['idx']], st.session_state['answer'][st.session_state['idx']]))
-    else:
-        place.warning("아직 저장되지 않은 문제입니다.")
-
-    
-    before_p, save,next_p = place.columns(3)
+    before_p, save, next_p = place.columns(3)
+    sub = place.text_input("과목은?")
+    ans = place.text_input("정답은?")
 
     if next_p.button("다음 문제"):
         if st.session_state['idx'] < len(gan_images)-1:
             st.session_state['idx'] += 1
         else:
             st.session_state['idx'] = len(gan_images)-1
-            st.warning("It's last problem")
+            st.warning("마지막 문제 입니다.")
         page_chg('/',router)
 
     if before_p.button("이전 문제"):
@@ -171,39 +101,24 @@ def run_gan(place, router):
             st.session_state['idx'] -= 1
         else:
             st.session_state['idx'] = 0
-            st.warning("It's first problem")
+            st.warning("첫 번째 문제 입니다.")
         page_chg('/',router)
 
-    col1, col2, col3 = place.columns(3)
-    sub = col1.text_input("과목은?")
-    ans = col2.text_input("정답은?")
-
-    #SAVE subject, answer
-    if col3.button("과목,답 저장"):
-        if (sub!='') and (ans!=''): 
-            st.session_state['subject'][st.session_state['idx']] = sub
-            st.session_state['answer'][st.session_state['idx']] = ans
-            st.success("과목과 정답을 저장했습니다.")
-        else:
-            st.warning("과목과 정답을 모두 기재해주세요.")
-
-    if save.button("마지막! 문제들 저장"):
+    #SAVE subject, answer, image
+    if save.button("저장"):
         if os.path.isdir("save")==False:
             os.mkdir("save")
         
-        #Check write all answer
-        if (len(st.session_state['answer']) == len(gan_images)):
-            for i in range(len(gan_images)):
-                save_name = 'save/%s_%s_%d.jpg'%(st.session_state['user_id'], st.session_state["file_name"][:-4] , i)
-                #save image to file save/
-                cv2.imwrite(save_name,gan_images[i])
-                # save img path in db
-                query = 'insert into problems (user_id, problem_file_name, answer, subject) values ("%s", "%s", "%s","%s");'%(st.session_state['user_id'], save_name, st.session_state['answer'][i],st.session_state['subject'][i])
-                rowcount = run_insert(query)
-                if rowcount!=0:
+        if (sub!='') and (ans!=''):
+            save_name = 'save/%s_%s_%d.jpg'%(st.session_state['user_id'], st.session_state["file_name"][:-4] ,st.session_state["idx"]) 
+            #save image to file save/
+            cv2.imwrite(save_name,gan_images[st.session_state['idx']])
+            query = 'insert into problems (user_id, problem_file_name, answer, subject) values ("%s", "%s", "%s","%s");'%(st.session_state['user_id'], save_name, ans,sub)
+            rowcount = run_insert(query)
+            if rowcount!=0:
                     st.info('문제가 저장되었습니다.')
         else:
-            place.error("과목과 정답을 기재하지 않은 문제가 있습니다.")
+            st.warning("과목과 정답을 모두 기재해주세요.")
 
     _, _, next = place.columns(3)
     if next.button("PDF 만들기"):
