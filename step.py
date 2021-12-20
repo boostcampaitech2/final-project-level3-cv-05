@@ -5,6 +5,7 @@ from utils.utils import *
 
 from gan import GAN_image
 from detection import OD_image
+from segmentation import seg_image
 import numpy as np
 
 import cv2
@@ -63,12 +64,9 @@ def run_object_detection(img, place, router):
     if flag_a and (st.session_state["crop_image"] is not None):
         st.session_state['sub_page'] = "third"
         page_chg('/',router)
-@st.cache
-def seg_image(image):
-    pass
-    return image
 
-def run_gan(place, router):
+
+def run_seg(place, router):
     crop_images = st.session_state["crop_image"]
     gan_images = None
 
@@ -80,7 +78,7 @@ def run_gan(place, router):
         st.session_state['idx'] = 0
 
     if gan_images is None:
-        gan_images = GAN_image(crop_images)
+        gan_images = seg_image(crop_images)
     else:
         pass
 
