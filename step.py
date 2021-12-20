@@ -1,11 +1,12 @@
 import streamlit as st
-from PIL import Image, ImageOps
 from streamlit_drawable_canvas import st_canvas
+from PIL import Image, ImageOps
 from utils.utils import *
 
 from gan import GAN_image
 from detection import OD_image
 from segmentation import seg_image
+from crop_editor import crop_canvas
 import numpy as np
 
 import cv2
@@ -45,53 +46,38 @@ def upload_problem_images(place, router):
             page_chg('/',router)
 
 def run_object_detection(img, place, router):
-    place.subheader("틀린 문제를 잘랐습니다. 한 장씩 확인하며 수정할 부분은 수정하고 저장해주세요.") 
+    place.subheader("틀린 문제를 잘랐습니다.")
+    place.subheader("다시 자르고 싶다면 새로그리기를 누르고, 저장해주세요.") 
     #only run once
-    #해당 페이지에서 다시 새로고침하면, 뜨지 않음.
     if "idx" not in st.session_state:
         st.session_state['idx'] = 0
         _, st.session_state["crop_images"], _ = OD_image(img)
 
     if "crop_images" in st.session_state:
-        try:
-            place.image(st.session_state["crop_images"][st.session_state['idx']])
-        except IndexError: #detection 결과가 없을 때
+        if len(st.session_state["crop_images"])==0:
             place.write("틀린 문제를 찾지 못했습니다. 사용자가 직접 문제들을 그려주세요")
 
             canvas_result = st_canvas(
-            fill_color = "rgba(255,165,0,0.3)",
-            stroke_width = 1,
-            stroke_color = "#000",
-            background_color = "#eee",
-            background_image = img.resize((1000,900)),
-            update_streamlit = True,
-            height = 1000,
-            width = 900,
-            drawing_mode  = "rect",
-            key = "canvas"
-            )
-
-            if place.button("그린 문제 저장"):
-                if canvas_result.json_data is None:
-                    st.warning("문제 위에 박스를 치세요")
+                fill_color = "rgba(255,165,0,0.3)",
+                stroke_width = 1,
+                stroke_color = "#000",
+                background_color = "#eee",
+                background_image = img.resize((1000,900)),
+                update_streamlit = True,
+                height = 1000,
+                width = 900,
+                drawing_mode  = "rect",
+                key = "canvas"
+                )
+            if place.button("그린 문제들 저장"):
+                if len(canvas_result.json_data['objects'])!=0:
+                    st.session_state["crop_images"] = crop_canvas(canvas_result, img, place, True)
+                    page_chg('/',router)
                 else:
-                    new_images = []
-                    for object in canvas_result.json_data["objects"]:
-                        x = object["left"]
-                        y = object["top"]
-                        w = object["width"]
-                        h = object["height"]
-
-                        if not isinstance(img, np.ndarray):
-                            img = img.resize((900,1000))
-                            img = np.array(img)
-                            new_img = img[y:y+h,x:x+w]
-                            new_img = cv2.resize(new_img,dsize=(0, 0),fx=2, fy=2, interpolation=cv2.INTER_LINEAR)
-                            new_images.append(new_img)
-                        
-                    st.info("문제들이 저장되었습니다.")
-                    st.session_state["crop_images"] = new_images
+                    place.warning("저장할 문제가 없습니다.")
+            
         else:
+            place.image(st.session_state["crop_images"][st.session_state['idx']])
             canvas, next_p, next = place.columns(3)
 
             if next_p.button("다음 문제"):
@@ -102,41 +88,26 @@ def run_object_detection(img, place, router):
                     st.warning("마지막 문제 입니다.")
                 page_chg('/',router)
 
-            #SAVE Image or draw new box : 틀린 문제 말고도 사용자가 더 원하는 문제가 있으면 자를 수 있도록 하면 좋을 듯
+            #SAVE Image or draw new box/Further : 틀린 문제 말고도 사용자가 더 원하는 문제가 있으면 자를 수 있도록 하면 좋을 듯
             if canvas.checkbox("새로 그리기"):
-                #새로 그리기 누르면 canvas 나타나고
-                #거기서 나온 crop image 로 교체
+                #canvas and update image
                 canvas_result = st_canvas(
-                    fill_color = "rgba(255,165,0,0.3)",
-                    stroke_width = 1,
-                    stroke_color = "#000",
-                    background_color = "#eee",
-                    background_image = img.resize((1000,900)),
-                    update_streamlit = True,
-                    height = 1000,
-                    width = 900,
-                    drawing_mode  = "rect",
-                    key = "canvas"
+                fill_color = "rgba(255,165,0,0.3)",
+                stroke_width = 1,
+                stroke_color = "#000",
+                background_color = "#eee",
+                background_image = img.resize((1000,900)),
+                update_streamlit = True,
+                height = 1000,
+                width = 900,
+                drawing_mode  = "rect",
+                key = "canvas"
                 )
-                if place.button("그린 문제로 저장"):
-                    if canvas_result.json_data is None:
-                        st.warning("문제 위에 박스를 치세요")
-                    else:
-                        object = canvas_result.json_data["objects"][0]
-                        x = object["left"]
-                        y = object["top"]
-                        w = object["width"]
-                        h = object["height"]
-
-                        if not isinstance(img, np.ndarray):
-                            img = img.resize((900,1000))
-                            img = np.array(img)
-                        new_img = img[y:y+h,x:x+w]
-                        new_img = cv2.resize(new_img,dsize=(0, 0),fx=2, fy=2, interpolation=cv2.INTER_LINEAR)
-                        place.image(new_img)
-
-                        st.session_state["crop_images"][st.session_state["idx"]] = new_img
-                        st.info('문제가 새로 저장되었습니다.')
+                if place.button("그림 저장"):
+                    new_image = crop_canvas(canvas_result, img,place,False)
+                    st.session_state["crop_images"][st.session_state["idx"]] = new_image
+                    place.image(new_image)
+                    st.info("문제를 변경했습니다.")
 
             if next.button("글씨 지우기"):
                 del st.session_state["idx"]
@@ -188,8 +159,8 @@ def run_seg(place, router):
             query = 'insert into problems (user_id, problem_file_name, answer, subject) values ("%s", "%s", "%s","%s");'%(st.session_state['user_id'], save_name, ans,sub)
             rowcount = run_insert(query)
             if rowcount!=0:
-                    st.info('문제가 저장되었습니다.')
-                    page_chg('/',router)
+                st.info('문제가 저장되었습니다.')
+                page_chg('/',router)
         else:
             st.warning("과목과 정답을 모두 기재해주세요.")
 
@@ -254,31 +225,23 @@ def make_problem_pdf(place, router, images, flag):
             pdf.set_font('Arial', 'B', 24)
             pdf.set_text_color(0, 0, 0)
 
-            x, y, w = 10, 20, 90
-            problem_pad = 30
+            x, y, w, problem_pad = 10, 20, 90, 30
             pdf.add_page()
-            # 단 나누기
-            pdf.line(105, 10, 105, 280)
+            pdf.line(105, 10, 105, 280) # 단 나누기
             for q_n, i in enumerate(st.session_state["pick_problem"]):
                 img = images[i][2]
                 img_w, img_h = imagesize.get(img)
                 h = int(w * (img_h/img_w))
 
                 if y+h+problem_pad>=287:
-                    # 단 이동
-                    if x==10:
-                        x=110
-                        y=20
-                    # 페이지 이동
-                    elif x==110:
+                    if x==10: # 단 이동
+                        x, y=110, 20
+                    elif x==110: # 페이지 이동
                         pdf.add_page()
-                        # 단 나누기
-                        pdf.line(105, 10, 105, 280)
-                        x=10
-                        y=20
+                        pdf.line(105, 10, 105, 280) # 단 나누기
+                        x,y=10,20
                     else:
                         raise
-
                 # 문제 번호 작성
                 pdf.text(x=x, y=y-3, txt='N'+str(q_n+1).zfill(2))
                 # 문제 붙이기
