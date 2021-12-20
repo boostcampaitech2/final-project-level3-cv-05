@@ -5,10 +5,10 @@ from utils.utils import *
 
 from gan import GAN_image
 from detection import OD_image
+from segmentation import seg_image
 import numpy as np
 
 import cv2
-import crop_editor
 import os
 import base64
 
@@ -86,6 +86,7 @@ def run_object_detection(img, place, router):
                             img = img.resize((900,1000))
                             img = np.array(img)
                             new_img = img[y:y+h,x:x+w]
+                            new_img = cv2.resize(new_img,dsize=(0, 0),fx=2, fy=2, interpolation=cv2.INTER_LINEAR)
                             new_images.append(new_img)
                         
                     st.info("문제들이 저장되었습니다.")
@@ -134,6 +135,7 @@ def run_object_detection(img, place, router):
                             img = img.resize((900,1000))
                             img = np.array(img)
                         new_img = img[y:y+h,x:x+w]
+                        new_img = cv2.resize(new_img,dsize=(0, 0),fx=2, fy=2, interpolation=cv2.INTER_LINEAR)
                         place.image(new_img)
 
                         st.session_state["crop_images"][st.session_state["idx"]] = new_img
@@ -144,13 +146,8 @@ def run_object_detection(img, place, router):
                 st.session_state['sub_page'] = "third"
                 page_chg('/',router)
 
-@st.cache
-def run_seg(image):
-    pass
-    return image
 
-def run_gan(place, router):
-
+def run_seg(place, router):
 
     place.subheader("손글씨 지운 사진 확인하고, 문제의 과목과 답을 입력하세요.") #Show Clear image
     place.subheader("문제의 과목과 답을 입력 후에, 문제들을 저장하세요.")
@@ -158,11 +155,10 @@ def run_gan(place, router):
     #해당 페이지에서 다시 새로고침하면, 뜨지 않음.
     if "idx" not in st.session_state:
         st.session_state['idx'] = 0
-        st.session_state["gan_images"] = GAN_image(st.session_state["crop_images"])
+        st.session_state["gan_images"] = seg_image(st.session_state["crop_images"])
         del st.session_state["crop_images"]
 
-    if "gan_images" in st.session_state:
-        place.image(st.session_state["gan_images"][st.session_state['idx']])
+    place.image(st.session_state["gan_images"][st.session_state['idx']])
     before_p, save, next_p = place.columns(3)
     sub = place.text_input("과목은?")
     ans = place.text_input("정답은?")
@@ -196,6 +192,7 @@ def run_gan(place, router):
             rowcount = run_insert(query)
             if rowcount!=0:
                     st.info('문제가 저장되었습니다.')
+                    page_chg('/',router)
         else:
             st.warning("과목과 정답을 모두 기재해주세요.")
 
@@ -246,6 +243,7 @@ def make_problem_pdf(place, router, images, flag):
 
     #Next button
     if place.button("다음으로"):
+        print(len(images))
         if len(images) > st.session_state["idx_p"]:
             st.session_state["idx_p"] += 3
             page_chg('/',router)
