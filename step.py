@@ -1,5 +1,5 @@
 import streamlit as st
-from PIL import Image
+from PIL import Image, ImageOps
 from streamlit_drawable_canvas import st_canvas
 from utils.utils import *
 
@@ -22,6 +22,7 @@ def create_download_link(val, filename):
 @st.cache
 def load_image(image_file):
     img = Image.open(image_file)
+    img = ImageOps.exif_transpose(img)
     return img 
 
 def upload_problem_images(place, router):
@@ -32,10 +33,10 @@ def upload_problem_images(place, router):
     if image_file is not None:
         img = load_image(image_file) #Get Image
         img = img.convert('RGB') #RGBA -> RGB
-        img = img.resize((1000,900))
-        st.session_state["image"] = img #Give Image
+        st.session_state["image"] = img
          #TO DO : Find Error cuase over 50MB sol:Resize, change to ratio (1080x1920)
-        place.image(img)
+        
+        place.image(st.session_state["image"])
         _, _, next = place.columns(3)
 
         if next.button("다음"):
@@ -283,5 +284,6 @@ def make_problem_pdf(place, router, images):
     
     _, col2 = place.columns(2)
     if col2.button("처음으로"):
+        del st.session_state["image"]
         st.session_state['sub_page'] = "first"
         page_chg('/',router)
