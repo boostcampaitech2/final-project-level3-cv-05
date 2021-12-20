@@ -46,9 +46,11 @@ def upload_problem_images(place, router):
 
 def run_object_detection(img, place, router):
     if 'locations' not in st.session_state:
-        _, _, st.session_state['locations'] = OD_image(img)
+        st.session_state['drawed_img'], st.session_state['crop_image'], st.session_state['locations'] = OD_image(img)
     if 'json_file' not in st.session_state:
         st.session_state['json_file'] = crop_editor.make_detection_canvas(st.session_state['locations'])
+
+    place.image(st.session_state["drawed_img"])
 
     #Get locations only once
     if st.session_state['json_file'] is not None:
@@ -56,7 +58,7 @@ def run_object_detection(img, place, router):
         place.write("Load가 끝날 때마다 천천히 조정해야 수정이 적용됨.")
         select = place.selectbox("Tool:", ("크기 조정", "새로 그리기"))
         drawing_mode = {"크기 조정":"transform","새로 그리기":"rect"}
-        bg_image = img
+        bg_image = img.resize((1000,900))
         shape = np.shape(bg_image)
         place.write("다 했으면, 아래 canvas 아래에서 저장 버튼을 눌러주세요.")
 

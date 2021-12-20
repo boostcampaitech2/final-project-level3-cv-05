@@ -4,7 +4,7 @@ import streamlit as st
 import extra_streamlit_components as stx
 from utils.utils import *
 from step import (upload_problem_images, make_problem_pdf,
-                  run_object_detection, run_gan, run_seg)
+                  run_object_detection, run_gan)#, run_seg)
 
 #streamlit run server.py --server.address=127.0.0.1
 #이렇게 하면 브라우저가 Local로 띄워짐.
