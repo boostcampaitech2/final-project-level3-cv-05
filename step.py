@@ -89,6 +89,10 @@ def run_object_detection(img, place, router):
         st.session_state['sub_page'] = "third"
         page_chg('/',router)
 
+
+    if flag_a and (st.session_state["crop_image"] is not None):
+        st.session_state['sub_page'] = "third"
+        page_chg('/',router)
 @st.cache
 def run_seg(image):
     pass
@@ -258,3 +262,4 @@ def make_problem_pdf(place, router, images, flag):
         if col2.button("처음으로"):
             st.session_state['sub_page'] = "first"
             page_chg('/',router)
+

@@ -100,6 +100,7 @@ def streamlit_run():
             page_chg('/',router)
         
         menu = ["실행","문제 PDF 만들기","전체 문제 보기", "About"]
+
         choice = st.sidebar.selectbox("Menu", menu)
         st.sidebar.text(sess_state['prev_menu'])
 
