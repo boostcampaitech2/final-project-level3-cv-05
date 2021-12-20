@@ -117,7 +117,7 @@ def seg_image(images):
         h, w = output.shape
         result = np.full((h,w,3), 255).astype(np.uint8)
         result[output == 1] = 0
-        kernel = np.full((4,4), 1)
+        kernel = np.full((3,3), 1)
         result = cv2.morphologyEx(result, cv2.MORPH_CLOSE, kernel)
         results.append(result)
     
