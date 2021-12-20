@@ -36,9 +36,8 @@ def upload_problem_images(place, router):
         img = img.convert('RGB') #RGBA -> RGB
         st.session_state["image"] = img
          #TO DO : Find Error cuase over 50MB sol:Resize, change to ratio (1080x1920)
-        
-        place.image(st.session_state["image"])
         _, _, next = place.columns(3)
+        place.image(st.session_state["image"])
 
         if next.button("다음"):
             st.session_state["file_name"] = image_file.name
@@ -46,61 +45,112 @@ def upload_problem_images(place, router):
             page_chg('/',router)
 
 def run_object_detection(img, place, router):
-    place.subheader("틀린 문제를 잘랐습니다. 한 장씩 확인하며 저장해주세요.") 
+    place.subheader("틀린 문제를 잘랐습니다. 한 장씩 확인하며 수정할 부분은 수정하고 저장해주세요.") 
     #only run once
     #해당 페이지에서 다시 새로고침하면, 뜨지 않음.
     if "idx" not in st.session_state:
         st.session_state['idx'] = 0
+        _, st.session_state["crop_images"], _ = OD_image(img)
 
-    crop_images = None
-    if crop_images is None:
-        _, crop_image, locations = OD_image(img)
-        new_images = []
-    else:
-        pass
+    if "crop_images" in st.session_state:
+        try:
+            place.image(st.session_state["crop_images"][st.session_state['idx']])
+        except IndexError: #detection 결과가 없을 때
+            place.write("틀린 문제를 찾지 못했습니다. 사용자가 직접 문제들을 그려주세요")
 
-    place.image(crop_image[st.session_state['idx']])
-    canvas, save, next_p = place.columns(3)
+            canvas_result = st_canvas(
+            fill_color = "rgba(255,165,0,0.3)",
+            stroke_width = 1,
+            stroke_color = "#000",
+            background_color = "#eee",
+            background_image = img.resize((1000,900)),
+            update_streamlit = True,
+            height = 1000,
+            width = 900,
+            drawing_mode  = "rect",
+            key = "canvas"
+            )
 
-    if next_p.button("다음 문제"):
-        if st.session_state['idx'] < len(crop_image)-1:
-            st.session_state['idx'] += 1
+            if place.button("그린 문제 저장"):
+                if canvas_result.json_data is None:
+                    st.warning("문제 위에 박스를 치세요")
+                else:
+                    new_images = []
+                    for object in canvas_result.json_data["objects"]:
+                        x = object["left"]
+                        y = object["top"]
+                        w = object["width"]
+                        h = object["height"]
+
+                        if not isinstance(img, np.ndarray):
+                            img = img.resize((900,1000))
+                            img = np.array(img)
+                            new_img = img[y:y+h,x:x+w]
+                            new_images.append(new_img)
+                        
+                    st.info("문제들이 저장되었습니다.")
+                    st.session_state["crop_images"] = new_images
         else:
-            st.session_state['idx'] = len(crop_image)-1
-            st.warning("마지막 문제 입니다.")
-        page_chg('/',router)
+            canvas, next_p, next = place.columns(3)
 
-    #SAVE Image or draw new box : 틀린 문제 말고도 사용자가 더 원하는 문제가 있으면 자를 수 있도록 하면 좋을 듯
-    if save.button("저장"):
-        new_images.append(crop_images[st.session_state["idx"]])
-        st.info('문제가 저장되었습니다.')
+            if next_p.button("다음 문제"):
+                if st.session_state['idx'] < len(st.session_state["crop_images"])-1:
+                    st.session_state['idx'] += 1
+                else:
+                    st.session_state['idx'] = len(st.session_state["crop_images"])-1
+                    st.warning("마지막 문제 입니다.")
+                page_chg('/',router)
 
-    if canvas.checkbox("새로 그리기"):
-        place.write("hello")
-    #문제 밑에 체크 표시 만들어서, 그거 체크하면 canvas 뜰 수 있게.
-    #그림그리고 저장하면 그 문제 대신에 들어갈 수 있도록
+            #SAVE Image or draw new box : 틀린 문제 말고도 사용자가 더 원하는 문제가 있으면 자를 수 있도록 하면 좋을 듯
+            if canvas.checkbox("새로 그리기"):
+                #새로 그리기 누르면 canvas 나타나고
+                #거기서 나온 crop image 로 교체
+                canvas_result = st_canvas(
+                    fill_color = "rgba(255,165,0,0.3)",
+                    stroke_width = 1,
+                    stroke_color = "#000",
+                    background_color = "#eee",
+                    background_image = img.resize((1000,900)),
+                    update_streamlit = True,
+                    height = 1000,
+                    width = 900,
+                    drawing_mode  = "rect",
+                    key = "canvas"
+                )
 
-    _, _, next = place.columns(3)
-    flag_a = next.button("다음")
+                print("yes")
+                if place.button("그린 문제로 저장"):
+                    print("hi")
+                    if canvas_result.json_data is None:
+                        st.warning("문제 위에 박스를 치세요")
+                    else:
+                        object = canvas_result.json_data["objects"][0]
+                        x = object["left"]
+                        y = object["top"]
+                        w = object["width"]
+                        h = object["height"]
 
-    if flag_a:
-        del st.session_state['idx']
-        st.session_state["crop_image"] = new_images
-        st.session_state['sub_page'] = "third"
-        page_chg('/',router)
+                        if not isinstance(img, np.ndarray):
+                            img = img.resize((900,1000))
+                            img = np.array(img)
+                        new_img = img[y:y+h,x:x+w]
+                        place.image(new_img)
 
+                        st.session_state["crop_images"][st.session_state["idx"]] = new_img
+                        st.info('문제가 새로 저장되었습니다.')
 
-    if flag_a and (st.session_state["crop_image"] is not None):
-        st.session_state['sub_page'] = "third"
-        page_chg('/',router)
+            if next.button("글씨 지우기"):
+                del st.session_state["idx"]
+                st.session_state['sub_page'] = "third"
+                page_chg('/',router)
+
 @st.cache
 def run_seg(image):
     pass
     return image
 
 def run_gan(place, router):
-    crop_images = st.session_state["crop_image"]
-    gan_images = None
+
 
     place.subheader("손글씨 지운 사진 확인하고, 문제의 과목과 답을 입력하세요.") #Show Clear image
     place.subheader("문제의 과목과 답을 입력 후에, 문제들을 저장하세요.")
@@ -108,22 +158,20 @@ def run_gan(place, router):
     #해당 페이지에서 다시 새로고침하면, 뜨지 않음.
     if "idx" not in st.session_state:
         st.session_state['idx'] = 0
+        st.session_state["gan_images"] = GAN_image(st.session_state["crop_images"])
+        del st.session_state["crop_images"]
 
-    if gan_images is None:
-        gan_images = GAN_image(crop_images)
-    else:
-        pass
-
-    place.image(gan_images[st.session_state['idx']])
+    if "gan_images" in st.session_state:
+        place.image(st.session_state["gan_images"][st.session_state['idx']])
     before_p, save, next_p = place.columns(3)
     sub = place.text_input("과목은?")
     ans = place.text_input("정답은?")
 
     if next_p.button("다음 문제"):
-        if st.session_state['idx'] < len(gan_images)-1:
+        if st.session_state['idx'] < len(st.session_state["gan_images"])-1:
             st.session_state['idx'] += 1
         else:
-            st.session_state['idx'] = len(gan_images)-1
+            st.session_state['idx'] = len(st.session_state["gan_images"])-1
             st.warning("마지막 문제 입니다.")
         page_chg('/',router)
 
@@ -143,7 +191,7 @@ def run_gan(place, router):
         if (sub!='') and (ans!=''):
             save_name = 'save/%s_%s_%d.jpg'%(st.session_state['user_id'], st.session_state["file_name"][:-4] ,st.session_state["idx"]) 
             #save image to file save/
-            cv2.imwrite(save_name,gan_images[st.session_state['idx']])
+            cv2.imwrite(save_name,st.session_state["gan_images"][st.session_state['idx']])
             query = 'insert into problems (user_id, problem_file_name, answer, subject) values ("%s", "%s", "%s","%s");'%(st.session_state['user_id'], save_name, ans,sub)
             rowcount = run_insert(query)
             if rowcount!=0:
@@ -154,6 +202,7 @@ def run_gan(place, router):
     _, _, next = place.columns(3)
     if next.button("PDF 만들기"):
         del st.session_state['idx']
+        del st.session_state["gan_images"]
         st.session_state['sub_page'] = "fourth"
         page_chg('/',router)
 
@@ -202,10 +251,8 @@ def make_problem_pdf(place, router, images, flag):
             page_chg('/',router)
         else:
             st.warning("문제가 끝났습니다.")
-    
-    #print(st.session_state["pick_problem"])
 
-    export_as_problem_pdf = st.button("Export Problem Report")
+    export_as_problem_pdf = st.button("문제지 출력")
     if export_as_problem_pdf:
         if os.path.isdir("save"):
             # A4 size [width : 210, height : 287]
@@ -246,7 +293,7 @@ def make_problem_pdf(place, router, images, flag):
             html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
             st.markdown(html, unsafe_allow_html = True)
     
-    export_as_answer_pdf = st.button("Export Answer Report")
+    export_as_answer_pdf = st.button("답지 출력")
     if export_as_answer_pdf:
         pdf = FPDF()
         pdf.add_page()
@@ -260,6 +307,7 @@ def make_problem_pdf(place, router, images, flag):
     if flag:
         _, col2 = place.columns(2)
         if col2.button("처음으로"):
+            del st.session_state["idx_p"]
             st.session_state['sub_page'] = "first"
             page_chg('/',router)
 

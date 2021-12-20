@@ -147,6 +147,7 @@ def streamlit_run():
                 fourth.subheader("4. 문제를 선택하고, 문제지와 답지를 PDF로 받으세요!")
 
                 images =  run_select('SELECT * from problems where user_id="%s";' % sess_state['user_id'])
+
                 make_problem_pdf(fourth, router, images, True)
         elif choice == "문제 PDF 만들기":
             images =  run_select('SELECT * from problems where user_id="%s";' % sess_state['user_id'])
