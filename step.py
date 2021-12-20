@@ -50,83 +50,18 @@ def run_object_detection(img, place, router):
     if 'json_file' not in st.session_state:
         st.session_state['json_file'] = crop_editor.make_detection_canvas(st.session_state['locations'])
 
+    _, _, next = place.columns(3)
     place.image(st.session_state["drawed_img"])
 
-    #Get locations only once
-    if st.session_state['json_file'] is not None:
-        # Specify canvas parameters in application
-        place.write("Load가 끝날 때마다 천천히 조정해야 수정이 적용됨.")
-        select = place.selectbox("Tool:", ("크기 조정", "새로 그리기"))
-        drawing_mode = {"크기 조정":"transform","새로 그리기":"rect"}
-        bg_image = img.resize((1000,900))
-        shape = np.shape(bg_image)
-        place.write("다 했으면, 아래 canvas 아래에서 저장 버튼을 눌러주세요.")
+    flag_a = next.button("다음")
 
-        # Create a canvas component
-        canvas_result = st_canvas(
-            fill_color="rgba(255, 165, 0, 0.3)",  # Fixed fill color with some opacity
-            stroke_width= 1,
-            stroke_color= "#000",
-            background_color= "#eee",
-            background_image= bg_image,
-            update_streamlit= False, #real time update
-            height= shape[0], # To Do :  set ratio
-            width = shape[1],
-            drawing_mode=drawing_mode[select],
-            #이동은 되는데, 크기 조정이 안됨. 
-            #json file이 아닌 image file로하기.
-            initial_drawing =  st.session_state['json_file'],
-            key = "canvas"
-        )
+    place.write("자른 문제 결과")
+    if st.session_state["crop_image"] is not None:
+        place.image(st.session_state['crop_image'])
 
-        _, save, next = place.columns(3)
-        images = place.empty()
-        flag_a = next.button("다음")
-        if 'crop_image' not in st.session_state:
-            st.session_state["crop_image"] = None
-
-        if save.button("SAVE"):
-            cropped_imges = []
-            if canvas_result.json_data["objects"] is None:
-                place.error("자를 문제가 없습니다.")
-            else:
-                #Crop Image masking
-                mask = canvas_result.image_data
-                img_float32 = mask.astype("uint8")
-                new = cv2.cvtColor(img_float32,cv2.COLOR_BGRA2BGR)
-                gray = cv2.cvtColor(new,cv2.COLOR_BGR2GRAY) 
-                ret2,mask = cv2.threshold(gray,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
-                
-                kernel=np.ones((3,3),np.uint8)
-                dilated=cv2.dilate(mask,kernel,iterations=3)
-                # dilated = dilated.astype("uint8")
-
-                ### finding contours, can use connectedcomponents aswell
-                contours,_ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-                contours=[cv2.boundingRect(cnt) for cnt in contours]
-
-                for cnt in contours:
-                    x,y,w,h=cnt
-                    if (x,x+w,y,y+h) == (0,1000,0,900):
-                        #print("yes")
-                        continue
-                    area = (x,y,x+w,y+h)
-                    #print(area)
-                    cropped_img = img.crop(area)
-                    cropped_imges.append(np.array(cropped_img))
-                st.session_state["crop_image"] = cropped_imges
-                
-                place.write("자른 문제 결과")
-                if st.session_state["crop_image"] is not None:
-                    place.image(cropped_imges)
-
-        if flag_a and (st.session_state["crop_image"] is not None):
-            st.session_state['sub_page'] = "third"
-            page_chg('/',router)
-        elif flag_a: #only push button
-            place.error("자른 문제를 저장해주세요")
-
+    if flag_a and (st.session_state["crop_image"] is not None):
+        st.session_state['sub_page'] = "third"
+        page_chg('/',router)
 @st.cache
 def seg_image(image):
     pass
