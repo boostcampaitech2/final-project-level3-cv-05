@@ -89,7 +89,7 @@ def streamlit_run():
             logout()
             page_chg('/',router)
         
-        menu = ["실행","MakePDF","Answer","About", "Show All"]
+        menu = ["실행","MakePDF","About", "Show All"]
         choice = st.sidebar.selectbox("Menu", menu)
         st.sidebar.text(sess_state['prev_menu'])
 
@@ -143,8 +143,6 @@ def streamlit_run():
                 show_images(images)
             else:
                 st.warning("저장되어있는 문제가 없습니다.")
-        elif choice == "Answer":
-            st.text("Show")
         else:
             st.subheader("About")
             st.text("수학 오답 노트 편집기")
