@@ -77,8 +77,6 @@ def run_gan(place, router):
     #해당 페이지에서 다시 새로고침하면, 뜨지 않음.
     if "idx" not in st.session_state:
         st.session_state['idx'] = 0
-        st.session_state['subject'] = dict()
-        st.session_state['answer'] = dict()
 
     if gan_images is None:
         gan_images = GAN_image(crop_images)
@@ -86,21 +84,16 @@ def run_gan(place, router):
         pass
 
     place.image(gan_images[st.session_state['idx']])
-    #write subject and answer if saved
-    if (st.session_state['idx'] in st.session_state['subject'].keys()) and (st.session_state["idx"] in st.session_state["answer"].keys()):
-        place.write("과목 : {}, 정답 : {}".format(st.session_state['subject'][st.session_state['idx']], st.session_state['answer'][st.session_state['idx']]))
-    else:
-        place.warning("아직 저장되지 않은 문제입니다.")
-
-    
-    before_p, save,next_p = place.columns(3)
+    before_p, save, next_p = place.columns(3)
+    sub = place.text_input("과목은?")
+    ans = place.text_input("정답은?")
 
     if next_p.button("다음 문제"):
         if st.session_state['idx'] < len(gan_images)-1:
             st.session_state['idx'] += 1
         else:
             st.session_state['idx'] = len(gan_images)-1
-            st.warning("It's last problem")
+            st.warning("마지막 문제 입니다.")
         page_chg('/',router)
 
     if before_p.button("이전 문제"):
@@ -108,39 +101,24 @@ def run_gan(place, router):
             st.session_state['idx'] -= 1
         else:
             st.session_state['idx'] = 0
-            st.warning("It's first problem")
+            st.warning("첫 번째 문제 입니다.")
         page_chg('/',router)
 
-    col1, col2, col3 = place.columns(3)
-    sub = col1.text_input("과목은?")
-    ans = col2.text_input("정답은?")
-
-    #SAVE subject, answer
-    if col3.button("과목,답 저장"):
-        if (sub!='') and (ans!=''): 
-            st.session_state['subject'][st.session_state['idx']] = sub
-            st.session_state['answer'][st.session_state['idx']] = ans
-            st.success("과목과 정답을 저장했습니다.")
-        else:
-            st.warning("과목과 정답을 모두 기재해주세요.")
-
-    if save.button("마지막! 문제들 저장"):
+    #SAVE subject, answer, image
+    if save.button("저장"):
         if os.path.isdir("save")==False:
             os.mkdir("save")
         
-        #Check write all answer
-        if (len(st.session_state['answer']) == len(gan_images)):
-            for i in range(len(gan_images)):
-                save_name = 'save/%s_%s_%d.jpg'%(st.session_state['user_id'], st.session_state["file_name"][:-4] , i)
-                #save image to file save/
-                cv2.imwrite(save_name,gan_images[i])
-                # save img path in db
-                query = 'insert into problems (user_id, problem_file_name, answer, subject) values ("%s", "%s", "%s","%s");'%(st.session_state['user_id'], save_name, st.session_state['answer'][i],st.session_state['subject'][i])
-                rowcount = run_insert(query)
-                if rowcount!=0:
+        if (sub!='') and (ans!=''):
+            save_name = 'save/%s_%s_%d.jpg'%(st.session_state['user_id'], st.session_state["file_name"][:-4] ,st.session_state["idx"]) 
+            #save image to file save/
+            cv2.imwrite(save_name,gan_images[st.session_state['idx']])
+            query = 'insert into problems (user_id, problem_file_name, answer, subject) values ("%s", "%s", "%s","%s");'%(st.session_state['user_id'], save_name, ans,sub)
+            rowcount = run_insert(query)
+            if rowcount!=0:
                     st.info('문제가 저장되었습니다.')
         else:
-            place.error("과목과 정답을 기재하지 않은 문제가 있습니다.")
+            st.warning("과목과 정답을 모두 기재해주세요.")
 
     _, _, next = place.columns(3)
     if next.button("PDF 만들기"):
