@@ -33,7 +33,7 @@ def upload_problem_images(place, router):
     if image_file is not None:
         img = load_image(image_file) #Get Image
         img = img.convert('RGB') #RGBA -> RGB
-        st.session_state["image"] = img
+        st.session_state["image"] = img.resize((1000,900))
          #TO DO : Find Error cuase over 50MB sol:Resize, change to ratio (1080x1920)
         
         place.image(st.session_state["image"])

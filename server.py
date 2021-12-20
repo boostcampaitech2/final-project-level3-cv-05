@@ -122,7 +122,7 @@ def streamlit_run():
                 upload_problem_images(first, router)
             #Crop problem
             elif sub_page == "second":
-                img = sess_state["image"].resize((1000,900))
+                img = sess_state["image"]
                 second = place.container()
                 run_object_detection(img,second, router)
             #Erase Handwriting
