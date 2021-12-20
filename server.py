@@ -1,8 +1,7 @@
-from PIL import Image
-
 import streamlit as st
 import extra_streamlit_components as stx
 from utils.utils import *
+from step import load_image
 from step import (upload_problem_images, make_problem_pdf,
                   run_object_detection, run_seg)
 
@@ -24,11 +23,21 @@ def session_init():
         st.session_state['prev_menu'] = ''
 
 def show_images(images):
-    for i in range(len(images)):
-        image = Image.open(images[i][2])
+    for i in range(0,len(images),2):
         col1, col2 = st.columns(2)
-        col1.write(i+1)
-        col2.image(image)
+        try:
+            img1 = load_image(images[i][2])
+        except IndexError:
+            pass
+        else:
+            col1.image(img1)
+
+        try:
+            img2 = load_image(images[i+1][2])
+        except IndexError:
+            pass
+        else:
+            col2.image(img2)
 
 @st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
 def init_router():
@@ -89,7 +98,8 @@ def streamlit_run():
             logout()
             page_chg('/',router)
         
-        menu = ["실행","MakePDF","About", "Show All"]
+        menu = ["실행","문제 PDF 만들기","전체 문제 보기", "About"]
+
         choice = st.sidebar.selectbox("Menu", menu)
         st.sidebar.text(sess_state['prev_menu'])
 
@@ -133,11 +143,15 @@ def streamlit_run():
             #Make PDF
             elif sub_page == "fourth":
                 fourth = place.container()
-                fourth.subheader("4. Make Problem PDF")
+                fourth.subheader("4. 문제를 선택하고, 문제지와 답지를 PDF로 받으세요!")
 
                 images =  run_select('SELECT * from problems where user_id="%s";' % sess_state['user_id'])
-                make_problem_pdf(fourth, router, images)
-        elif choice == "Show All" :
+
+                make_problem_pdf(fourth, router, images, True)
+        elif choice == "문제 PDF 만들기":
+            images =  run_select('SELECT * from problems where user_id="%s";' % sess_state['user_id'])
+            make_problem_pdf(st, router, images,False)
+        elif choice == "전체 문제 보기" :
             images =  run_select('SELECT * from problems where user_id="%s";' % sess_state['user_id'])
             if images is not None:
                 show_images(images)
