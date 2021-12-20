@@ -13,6 +13,7 @@ import os
 import base64
 
 from fpdf import FPDF
+import imagesize
 
 #pdf 다운
 def create_download_link(val, filename):
@@ -177,12 +178,41 @@ def make_problem_pdf(place, router, images):
     export_as_problem_pdf = st.button("Export Problem Report")
     if export_as_problem_pdf:
         if os.path.isdir("save"):
+            # A4 size [width : 210, height : 287]
             pdf = FPDF()
-            x, y, w, h=0, 10, 120, 100
-            for i in st.session_state["pick_problem"]:
+            pdf.set_font('Arial', 'B', 24)
+            pdf.set_text_color(0, 0, 0)
+
+            x, y, w = 10, 20, 90
+            problem_pad = 30
+            pdf.add_page()
+            # 단 나누기
+            pdf.line(105, 10, 105, 280)
+            for q_n, i in enumerate(st.session_state["pick_problem"]):
                 img = images[i][2]
-                pdf.add_page()
+                img_w, img_h = imagesize.get(img)
+                h = int(w * (img_h/img_w))
+
+                if y+h+problem_pad>=287:
+                    # 단 이동
+                    if x==10:
+                        x=110
+                        y=20
+                    # 페이지 이동
+                    elif x==110:
+                        pdf.add_page()
+                        # 단 나누기
+                        pdf.line(105, 10, 105, 280)
+                        x=10
+                        y=20
+                    else:
+                        raise
+
+                # 문제 번호 작성
+                pdf.text(x=x, y=y-3, txt='N'+str(q_n+1).zfill(2))
+                # 문제 붙이기
                 pdf.image(f"{img}", x=x, y=y, w=w, h=h)
+                y = y+h+problem_pad
             html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
             st.markdown(html, unsafe_allow_html = True)
     
@@ -191,8 +221,8 @@ def make_problem_pdf(place, router, images):
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", "B", 16)
-        for i in st.session_state["pick_problem"]:
-            text = "Q {} : A {} \n".format(i+1,images[i][3])
+        for q_n, i in enumerate(st.session_state["pick_problem"]):
+            text = "N{} : A {} \n".format(str(q_n+1).zfill(2),images[i][3])
             pdf.multi_cell(40,10,text)
         html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
         st.markdown(html, unsafe_allow_html = True)
