@@ -13,6 +13,7 @@ import os
 import base64
 
 from fpdf import FPDF
+import imagesize
 
 #pdf 다운
 def create_download_link(val, filename):
@@ -45,25 +46,51 @@ def upload_problem_images(place, router):
             page_chg('/',router)
 
 def run_object_detection(img, place, router):
-    if 'locations' not in st.session_state:
-        st.session_state['drawed_img'], st.session_state['crop_image'], st.session_state['locations'] = OD_image(img)
-    if 'json_file' not in st.session_state:
-        st.session_state['json_file'] = crop_editor.make_detection_canvas(st.session_state['locations'])
+    place.subheader("틀린 문제를 잘랐습니다. 한 장씩 확인하며 저장해주세요.") 
+    #only run once
+    #해당 페이지에서 다시 새로고침하면, 뜨지 않음.
+    if "idx" not in st.session_state:
+        st.session_state['idx'] = 0
+
+    crop_images = None
+    if crop_images is None:
+        _, crop_image, locations = OD_image(img)
+        new_images = []
+    else:
+        pass
+
+    place.image(crop_image[st.session_state['idx']])
+    canvas, save, next_p = place.columns(3)
+
+    if next_p.button("다음 문제"):
+        if st.session_state['idx'] < len(crop_image)-1:
+            st.session_state['idx'] += 1
+        else:
+            st.session_state['idx'] = len(crop_image)-1
+            st.warning("마지막 문제 입니다.")
+        page_chg('/',router)
+
+    #SAVE Image or draw new box : 틀린 문제 말고도 사용자가 더 원하는 문제가 있으면 자를 수 있도록 하면 좋을 듯
+    if save.button("저장"):
+        new_images.append(crop_images[st.session_state["idx"]])
+        st.info('문제가 저장되었습니다.')
+
+    if canvas.checkbox("새로 그리기"):
+        place.write("hello")
+    #문제 밑에 체크 표시 만들어서, 그거 체크하면 canvas 뜰 수 있게.
+    #그림그리고 저장하면 그 문제 대신에 들어갈 수 있도록
 
     _, _, next = place.columns(3)
-    place.image(st.session_state["drawed_img"])
-
     flag_a = next.button("다음")
 
-    place.write("자른 문제 결과")
-    if st.session_state["crop_image"] is not None:
-        place.image(st.session_state['crop_image'])
-
-    if flag_a and (st.session_state["crop_image"] is not None):
+    if flag_a:
+        del st.session_state['idx']
+        st.session_state["crop_image"] = new_images
         st.session_state['sub_page'] = "third"
         page_chg('/',router)
+
 @st.cache
-def seg_image(image):
+def run_seg(image):
     pass
     return image
 
@@ -72,7 +99,7 @@ def run_gan(place, router):
     gan_images = None
 
     place.subheader("손글씨 지운 사진 확인하고, 문제의 과목과 답을 입력하세요.") #Show Clear image
-    place.subheader("문제의 과목과 답을 모두 입력 후에, 문제들을 저장하세요.")
+    place.subheader("문제의 과목과 답을 입력 후에, 문제들을 저장하세요.")
     #only run once
     #해당 페이지에서 다시 새로고침하면, 뜨지 않음.
     if "idx" not in st.session_state:
@@ -126,7 +153,7 @@ def run_gan(place, router):
         st.session_state['sub_page'] = "fourth"
         page_chg('/',router)
 
-def make_problem_pdf(place, router, images):
+def make_problem_pdf(place, router, images, flag):
     #Choose Problem
     
     img1, img2, img3 = place.columns(3)
@@ -139,7 +166,7 @@ def make_problem_pdf(place, router, images):
     #Show images and get check
     try:
         img = images[st.session_state["idx_p"]]
-        img1.image(Image.open(img[2]))
+        img1.image(load_image(img[2]))
         if ch1.button("{}".format(st.session_state["idx_p"]+1)):
             st.session_state["pick_problem"].append(st.session_state["idx_p"])
             place.success("{} 번 문제 저장".format(st.session_state["idx_p"]+1))
@@ -148,7 +175,7 @@ def make_problem_pdf(place, router, images):
     
     try:
         img = images[st.session_state["idx_p"] + 1]
-        img2.image(Image.open(img[2]))
+        img2.image(load_image(img[2]))
         if ch2.button("{}".format(st.session_state["idx_p"]+2)):
             st.session_state["pick_problem"].append(st.session_state["idx_p"]+1)
             place.success("{} 번 문제 저장".format(st.session_state["idx_p"]+2))
@@ -157,7 +184,7 @@ def make_problem_pdf(place, router, images):
     
     try:
         img = images[st.session_state["idx_p"] + 2]
-        img3.image(Image.open(img[2]))
+        img3.image(load_image(img[2]))
         if ch3.button("{}".format(st.session_state["idx_p"]+3)):
             st.session_state["pick_problem"].append(st.session_state["idx_p"]+2)
             place.success("{} 번 문제 저장".format(st.session_state["idx_p"]+3))
@@ -177,12 +204,41 @@ def make_problem_pdf(place, router, images):
     export_as_problem_pdf = st.button("Export Problem Report")
     if export_as_problem_pdf:
         if os.path.isdir("save"):
+            # A4 size [width : 210, height : 287]
             pdf = FPDF()
-            x, y, w, h=0, 10, 120, 100
-            for i in st.session_state["pick_problem"]:
+            pdf.set_font('Arial', 'B', 24)
+            pdf.set_text_color(0, 0, 0)
+
+            x, y, w = 10, 20, 90
+            problem_pad = 30
+            pdf.add_page()
+            # 단 나누기
+            pdf.line(105, 10, 105, 280)
+            for q_n, i in enumerate(st.session_state["pick_problem"]):
                 img = images[i][2]
-                pdf.add_page()
+                img_w, img_h = imagesize.get(img)
+                h = int(w * (img_h/img_w))
+
+                if y+h+problem_pad>=287:
+                    # 단 이동
+                    if x==10:
+                        x=110
+                        y=20
+                    # 페이지 이동
+                    elif x==110:
+                        pdf.add_page()
+                        # 단 나누기
+                        pdf.line(105, 10, 105, 280)
+                        x=10
+                        y=20
+                    else:
+                        raise
+
+                # 문제 번호 작성
+                pdf.text(x=x, y=y-3, txt='N'+str(q_n+1).zfill(2))
+                # 문제 붙이기
                 pdf.image(f"{img}", x=x, y=y, w=w, h=h)
+                y = y+h+problem_pad
             html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
             st.markdown(html, unsafe_allow_html = True)
     
@@ -191,14 +247,14 @@ def make_problem_pdf(place, router, images):
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", "B", 16)
-        for i in st.session_state["pick_problem"]:
-            text = "Q {} : A {} \n".format(i+1,images[i][3])
+        for q_n, i in enumerate(st.session_state["pick_problem"]):
+            text = "N{} : A {} \n".format(str(q_n+1).zfill(2),images[i][3])
             pdf.multi_cell(40,10,text)
         html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
         st.markdown(html, unsafe_allow_html = True)
     
-    _, col2 = place.columns(2)
-    if col2.button("처음으로"):
-        del st.session_state["image"]
-        st.session_state['sub_page'] = "first"
-        page_chg('/',router)
+    if flag:
+        _, col2 = place.columns(2)
+        if col2.button("처음으로"):
+            st.session_state['sub_page'] = "first"
+            page_chg('/',router)
