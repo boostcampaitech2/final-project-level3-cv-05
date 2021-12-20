@@ -118,10 +118,7 @@ def run_object_detection(img, place, router):
                     drawing_mode  = "rect",
                     key = "canvas"
                 )
-
-                print("yes")
                 if place.button("그린 문제로 저장"):
-                    print("hi")
                     if canvas_result.json_data is None:
                         st.warning("문제 위에 박스를 치세요")
                     else:
@@ -243,7 +240,6 @@ def make_problem_pdf(place, router, images, flag):
 
     #Next button
     if place.button("다음으로"):
-        print(len(images))
         if len(images) > st.session_state["idx_p"]:
             st.session_state["idx_p"] += 3
             page_chg('/',router)
