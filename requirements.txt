@@ -1,0 +1,8 @@
+albumentations==1.1.0
+extra-streamlit-components==0.1.53
+fpdf==1.7.2
+imagesize==1.3.0
+mmdet==2.19.1
+mysql-connector-python==8.0.27
+streamlit==1.3.0
+streamlit-drawable-canvas==0.8.0
