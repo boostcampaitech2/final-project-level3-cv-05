@@ -3,7 +3,7 @@ from streamlit_drawable_canvas import st_canvas
 from PIL import Image, ImageOps
 from utils.utils import *
 
-from gan import GAN_image
+from gan import GAN_image, Inpainting_image
 from detection import OD_image
 from segmentation import seg_image
 from crop_editor import crop_canvas
@@ -123,7 +123,9 @@ def run_seg(place, router):
     #해당 페이지에서 다시 새로고침하면, 뜨지 않음.
     if "idx" not in st.session_state:
         st.session_state['idx'] = 0
-        st.session_state["gan_images"] = seg_image(st.session_state["crop_images"])
+        seg_images = seg_image(st.session_state["crop_images"])
+        st.session_state["gan_images"] = Inpainting_image(st.session_state["crop_images"],seg_images)
+        
         del st.session_state["crop_images"]
 
     place.image(st.session_state["gan_images"][st.session_state['idx']])
@@ -247,7 +249,7 @@ def make_problem_pdf(place, router, images, flag):
                 # 문제 붙이기
                 pdf.image(f"{img}", x=x, y=y, w=w, h=h)
                 y = y+h+problem_pad
-            html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
+            html = create_download_link(pdf.output(dest="S").encode("latin-1"), "problem")
             st.markdown(html, unsafe_allow_html = True)
     
     export_as_answer_pdf = st.button("답지 출력")
@@ -258,7 +260,7 @@ def make_problem_pdf(place, router, images, flag):
         for q_n, i in enumerate(st.session_state["pick_problem"]):
             text = "N{} : A {} \n".format(str(q_n+1).zfill(2),images[i][3])
             pdf.multi_cell(40,10,text)
-        html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
+        html = create_download_link(pdf.output(dest="S").encode("latin-1"), "answer")
         st.markdown(html, unsafe_allow_html = True)
     
     if flag:
