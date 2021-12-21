@@ -249,7 +249,7 @@ def make_problem_pdf(place, router, images, flag):
                 # 문제 붙이기
                 pdf.image(f"{img}", x=x, y=y, w=w, h=h)
                 y = y+h+problem_pad
-            html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
+            html = create_download_link(pdf.output(dest="S").encode("latin-1"), "problem")
             st.markdown(html, unsafe_allow_html = True)
     
     export_as_answer_pdf = st.button("답지 출력")
@@ -260,7 +260,7 @@ def make_problem_pdf(place, router, images, flag):
         for q_n, i in enumerate(st.session_state["pick_problem"]):
             text = "N{} : A {} \n".format(str(q_n+1).zfill(2),images[i][3])
             pdf.multi_cell(40,10,text)
-        html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
+        html = create_download_link(pdf.output(dest="S").encode("latin-1"), "answer")
         st.markdown(html, unsafe_allow_html = True)
     
     if flag:

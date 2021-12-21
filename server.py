@@ -68,6 +68,7 @@ def streamlit_run():
                 sess_state['user_id'] = user_id
                 sess_state['user_name'] = user_name
                 sess_state['wrong_num'] = wrong_num
+                sess_state['sub_page'] = 'first'
                 print("로그인 성공")
                 page_chg('/',router)
 
