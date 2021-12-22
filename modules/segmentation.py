@@ -109,7 +109,7 @@ def ori_copy(ori_image, output):
 
 @st.cache
 def seg_image(images):    
-    config_dir = './checkpoints/deeplabv3.py'
+    config_dir = './models/deeplabv3.py'
     checkpoint = './checkpoints/best_mIoU_epoch_8.pth'
     model, cfg = slide_load_model(config_dir, checkpoint)
     outputs, oris = slide_inference(model, cfg, images)

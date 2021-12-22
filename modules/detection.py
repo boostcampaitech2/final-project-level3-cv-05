@@ -105,7 +105,7 @@ def crop_from_crop_locations(img, crop_locations):
 #Object Detection
 @st.cache
 def OD_init():
-    detector = load_model(cfg_path = "./checkpoints/yolov3_config.py", 
+    detector = load_model(cfg_path = "./models/yolov3_config.py", 
                     ckpt_path = "./checkpoints/yolov3_weight.pth")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     detector = detector.to(device)
