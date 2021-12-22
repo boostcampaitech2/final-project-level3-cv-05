@@ -1,4 +1,23 @@
 # Final Project level3-cv-05
+---
+## Getting Started
+### Installation
+Create conda enviroment
+```bash
+conda create -n mathnote python=3.7.11 -y
+conda activate mathnote
+```
+
+Install pytorch&mmcv
+```bash
+conda install pytorch=1.6.0 cudatoolkit=10.1 torchvision -c pytorch -y
+pip install mmcv-full==1.3.17 -f https://download.openmmlab.com/mmcv/dist/cu101/torch1.6.0/index.html
+```
+
+Install requirements
+```bash
+pip install -r requirements.txt
+```
 
 ---
 ### Authors
