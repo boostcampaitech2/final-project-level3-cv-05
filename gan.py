@@ -40,7 +40,7 @@ def GAN_image(images):
     return outputs
 
 @st.cache
-def load_cyclegan_model(model_file):
+def load_cyclegan_model(model_file = 'latest_net_G_A.pth'):
     net = CycleGAN_G(2, 2, 8, 64, norm_layer=nn.BatchNorm2d, use_dropout=False)
     load_path = './checkpoints/'+model_file
     state_dict = torch.load(load_path, map_location=str('cuda'))
@@ -48,15 +48,12 @@ def load_cyclegan_model(model_file):
     return net
 
 @st.cache
-def Inpainting_image(ori_images, target_images):
+def Inpainting_image(gan_model, ori_images, target_images):
     ''' Inpainting the result of segmentation 
     Parameters:
         ori_images : list of original images (before segmentation) (numpy array type)
         target_images : list of images to inpaint (after segmentation) (numpy array type)
     '''
-    
-    # load model
-    gan_model = load_cyclegan_model('latest_net_G_A.pth')
     # data transform
     load_size = [256,768]
     img_transform = A.Compose([

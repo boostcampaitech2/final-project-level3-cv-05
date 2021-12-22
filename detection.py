@@ -92,6 +92,7 @@ def get_crop_location(model, img, uncorrect=True, score_thresh=0.3):
 def draw_from_crop_locations(img, crop_locations, color=(255,0,0), thickness=3):
     new_img = deepcopy(img)
     for x1,y1,x2,y2 in crop_locations:
+        print(x1,y1,x2,y2)
         new_img = cv2.rectangle(new_img, (x1,y1), (x2,y2), color, thickness)
     return new_img
 
@@ -103,15 +104,21 @@ def crop_from_crop_locations(img, crop_locations):
 
 #Object Detection
 @st.cache
-def OD_image(image):
-    ''' Crop uncorrect problem
-    Parameters:
-        image : PIL Image Type
-    '''
+def OD_init():
     detector = load_model(cfg_path = "./checkpoints/yolov3_config.py", 
                     ckpt_path = "./checkpoints/yolov3_weight.pth")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     detector = detector.to(device)
+
+    return detector
+
+
+@st.cache
+def OD_image(detector, image):
+    ''' Crop uncorrect problem
+    Parameters:
+        image : PIL Image Type
+    '''
     if not isinstance(image, np.ndarray):
         image = np.array(image)
     locations = get_crop_location(detector, image)   # [[x1,y1,x2,y2], [x1,y1,x2,y2], ...]
