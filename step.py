@@ -3,9 +3,9 @@ from streamlit_drawable_canvas import st_canvas
 from PIL import Image, ImageOps
 from utils.utils import *
 
-from gan import GAN_image, Inpainting_image
-from detection import OD_image
-from segmentation import seg_image
+from modules.gan import GAN_image, Inpainting_image
+from modules.detection import OD_image
+from modules.segmentation import seg_image
 from crop_editor import crop_canvas
 import numpy as np
 

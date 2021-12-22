@@ -9,9 +9,11 @@ from mmcv.runner import load_checkpoint
 from mmseg.models import build_segmentor
 from mmseg.datasets import build_dataloader, build_dataset
 
-from utils.utils import mkdir
 import cv2
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+from utils.utils import mkdir
 
 
 def slide_load_model(config_dir, checkpoint):
@@ -117,7 +119,7 @@ def seg_image(images):
         h, w = output.shape
         result = np.full((h,w,3), 255).astype(np.uint8)
         result[output == 1] = 0
-        kernel = np.full((3,3), 1)
+        kernel = np.full((4,4), 1)
         result = cv2.morphologyEx(result, cv2.MORPH_CLOSE, kernel)
         results.append(result)
     

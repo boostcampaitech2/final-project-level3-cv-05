@@ -4,8 +4,8 @@ from utils.utils import *
 from step import load_image
 from step import (upload_problem_images, make_problem_pdf,
                   run_object_detection, run_seg)
-from detection import OD_init
-from gan import load_cyclegan_model
+from modules.detection import OD_init
+from modules.gan import load_cyclegan_model
 
 #streamlit run server.py --server.address=127.0.0.1
 #이렇게 하면 브라우저가 Local로 띄워짐.
