@@ -4,7 +4,7 @@ from PIL import Image, ImageOps
 from utils.utils import *
 
 from gan import GAN_image, Inpainting_image
-from detection import OD_image
+from detection import det_image
 from segmentation import seg_image
 from crop_editor import crop_canvas
 import numpy as np
@@ -54,7 +54,7 @@ def run_object_detection(img, place, router):
         page_chg('/',router)    
     #only run once
     if "crop_images" not in st.session_state:
-        st.session_state["all"], st.session_state["crop_images"], _ = OD_image(st.session_state["detector"],img)
+        st.session_state["all"], st.session_state["crop_images"], _ = det_image(st.session_state["detector"],img)
 
     if "crop_images" in st.session_state:
         if len(st.session_state["crop_images"])==0:
@@ -112,7 +112,7 @@ def run_seg(place, router):
     #해당 페이지에서 다시 새로고침하면, 뜨지 않음.
     if "idx" not in st.session_state:
         st.session_state['idx'] = 0
-        seg_images = seg_image(st.session_state["seg_init"],st.session_state["cfg"],st.session_state["crop_images"])
+        seg_images = seg_image(st.session_state["segmentor"],st.session_state["crop_images"])
         st.session_state["gan_images"] = Inpainting_image(st.session_state['gan'],st.session_state["crop_images"],seg_images)
         
         del st.session_state["crop_images"]

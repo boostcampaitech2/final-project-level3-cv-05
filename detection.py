@@ -44,7 +44,8 @@ def preprocess_img(img):
     img_meta['ori_shape'] = img.shape
 
     img = Resize(image=img)['image']
-    img = Normalize(image=img)['image']
+    # img = Normalize(image=img)['image']
+    img = mmcv.imnormalize(img, np.array(mean), np.array(std), True)
     img_meta['img_shape'] = img.shape
     
     # size_divisor pad
@@ -104,7 +105,7 @@ def crop_from_crop_locations(img, crop_locations):
 
 #Object Detection
 @st.cache
-def OD_init():
+def det_init():
     detector = load_model(cfg_path = "./checkpoints/yolov3_config.py", 
                     ckpt_path = "./checkpoints/yolov3_weight.pth")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -114,7 +115,7 @@ def OD_init():
 
 
 @st.cache
-def OD_image(detector, image):
+def det_image(detector, image):
     ''' Crop uncorrect problem
     Parameters:
         image : PIL Image Type
