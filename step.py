@@ -66,7 +66,7 @@ def run_object_detection(img, place, router):
                 stroke_color = "#000",
                 background_color = "#eee",
                 background_image = img.resize((1000,900)),
-                update_streamlit = False,
+                update_streamlit = True,
                 height = 1000,
                 width = 900,
                 drawing_mode  = "rect",

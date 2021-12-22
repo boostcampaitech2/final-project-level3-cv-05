@@ -25,4 +25,4 @@ def crop_canvas( canvas_result, img):
         new_img = cv2.resize(new_img,dsize=(0, 0),fx=2, fy=2, interpolation=cv2.INTER_LINEAR)
         st.session_state["new_images"].append(new_img)
 
-        return st.session_state["new_images"]
+    return st.session_state["new_images"]
