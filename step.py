@@ -47,23 +47,26 @@ def upload_problem_images(place, router):
 
 def run_object_detection(img, place, router):
     place.subheader("틀린 문제를 잘랐습니다.")
-    place.subheader("다시 자르고 싶다면 새로그리기를 누르고, 저장해주세요.") 
+    place.subheader("다시 자르고 싶다면 새로그리기를 누르고, 저장해주세요.")
+
+    if place.button("글씨 지우기"):
+        st.session_state['sub_page'] = "third"
+        page_chg('/',router)    
     #only run once
-    if "idx" not in st.session_state:
-        st.session_state['idx'] = 0
-        _, st.session_state["crop_images"], _ = OD_image(img)
+    if "crop_images" not in st.session_state:
+        st.session_state["all"], st.session_state["crop_images"], _ = OD_image(st.session_state["detector"],img)
 
     if "crop_images" in st.session_state:
         if len(st.session_state["crop_images"])==0:
             place.write("틀린 문제를 찾지 못했습니다. 사용자가 직접 문제들을 그려주세요")
-
+            
             canvas_result = st_canvas(
                 fill_color = "rgba(255,165,0,0.3)",
                 stroke_width = 1,
                 stroke_color = "#000",
                 background_color = "#eee",
                 background_image = img.resize((1000,900)),
-                update_streamlit = True,
+                update_streamlit = False,
                 height = 1000,
                 width = 900,
                 drawing_mode  = "rect",
@@ -71,25 +74,14 @@ def run_object_detection(img, place, router):
                 )
             if place.button("그린 문제들 저장"):
                 if len(canvas_result.json_data['objects'])!=0:
-                    st.session_state["crop_images"] = crop_canvas(canvas_result, img, place, True)
+                    st.session_state["crop_images"] = crop_canvas(canvas_result, img)
                     page_chg('/',router)
                 else:
                     place.warning("저장할 문제가 없습니다.")
-            
         else:
-            place.image(st.session_state["crop_images"][st.session_state['idx']])
-            canvas, next_p, next = place.columns(3)
-
-            if next_p.button("다음 문제"):
-                if st.session_state['idx'] < len(st.session_state["crop_images"])-1:
-                    st.session_state['idx'] += 1
-                else:
-                    st.session_state['idx'] = len(st.session_state["crop_images"])-1
-                    st.warning("마지막 문제 입니다.")
-                page_chg('/',router)
-
+            place.image(st.session_state["all"])
             #SAVE Image or draw new box/Further : 틀린 문제 말고도 사용자가 더 원하는 문제가 있으면 자를 수 있도록 하면 좋을 듯
-            if canvas.checkbox("새로 그리기"):
+            if place.checkbox("새로 그리기"):
                 #canvas and update image
                 canvas_result = st_canvas(
                 fill_color = "rgba(255,165,0,0.3)",
@@ -103,16 +95,13 @@ def run_object_detection(img, place, router):
                 drawing_mode  = "rect",
                 key = "canvas"
                 )
-                if place.button("그림 저장"):
-                    new_image = crop_canvas(canvas_result, img,place,False)
-                    st.session_state["crop_images"][st.session_state["idx"]] = new_image
-                    place.image(new_image)
-                    st.info("문제를 변경했습니다.")
-
-            if next.button("글씨 지우기"):
-                del st.session_state["idx"]
-                st.session_state['sub_page'] = "third"
-                page_chg('/',router)
+                if place.button("새로 저장"):
+                    if len(canvas_result.json_data['objects'])!=0:
+                        st.session_state["crop_images"] = crop_canvas(canvas_result, img)
+                        page_chg('/',router)
+                    else:
+                        place.warning("저장할 문제가 없습니다.")
+                
 
 
 def run_seg(place, router):
@@ -124,7 +113,7 @@ def run_seg(place, router):
     if "idx" not in st.session_state:
         st.session_state['idx'] = 0
         seg_images = seg_image(st.session_state["crop_images"])
-        st.session_state["gan_images"] = Inpainting_image(st.session_state["crop_images"],seg_images)
+        st.session_state["gan_images"] = Inpainting_image(st.session_state['gan'],st.session_state["crop_images"],seg_images)
         
         del st.session_state["crop_images"]
 
