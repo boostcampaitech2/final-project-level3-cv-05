@@ -112,7 +112,7 @@ def run_seg(place, router):
     #해당 페이지에서 다시 새로고침하면, 뜨지 않음.
     if "idx" not in st.session_state:
         st.session_state['idx'] = 0
-        seg_images = seg_image(st.session_state["crop_images"])
+        seg_images = seg_image(st.session_state["seg_init"],st.session_state["cfg"],st.session_state["crop_images"])
         st.session_state["gan_images"] = Inpainting_image(st.session_state['gan'],st.session_state["crop_images"],seg_images)
         
         del st.session_state["crop_images"]

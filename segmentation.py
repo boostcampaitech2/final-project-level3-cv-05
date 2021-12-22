@@ -105,11 +105,17 @@ def ori_copy(ori_image, output):
     return output
 
 
-@st.cache
-def seg_image(images):    
+@st.cache(hash_funcs={torch.nn.parameter.Parameter: lambda parameter: parameter.data.numpy()})
+def seg_init():
     config_dir = './checkpoints/deeplabv3.py'
     checkpoint = './checkpoints/best_mIoU_epoch_8.pth'
     model, cfg = slide_load_model(config_dir, checkpoint)
+    
+    return model, cfg
+
+
+@st.cache
+def seg_image(model, cfg, images):    
     outputs, oris = slide_inference(model, cfg, images)
 
     results = list()

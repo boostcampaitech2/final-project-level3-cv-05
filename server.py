@@ -5,6 +5,7 @@ from step import load_image
 from step import (upload_problem_images, make_problem_pdf,
                   run_object_detection, run_seg)
 from detection import OD_init
+from segmentation import seg_init
 from gan import load_cyclegan_model
 
 #streamlit run server.py --server.address=127.0.0.1
@@ -25,6 +26,8 @@ def session_init():
         st.session_state['prev_menu'] = ''
     if 'detector' not in st.session_state:
         st.session_state["detector"] = OD_init()
+    if 'seg_init' not in st.session_state:
+        st.session_state["seg_init"], st.session_state["cfg"]= seg_init()
     if 'gan' not in st.session_state:
         st.session_state['gan'] = load_cyclegan_model()
 
