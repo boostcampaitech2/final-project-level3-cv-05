@@ -3,7 +3,7 @@ from streamlit_drawable_canvas import st_canvas
 from PIL import Image, ImageOps
 from utils.utils import *
 
-from modules.gan import GAN_image, Inpainting_image
+from modules.gan import *
 from modules.detection import det_image
 from modules.segmentation import seg_image
 from crop_editor import crop_canvas
@@ -108,7 +108,9 @@ def run_seg(place, router):
     if "idx" not in st.session_state:
         st.session_state['idx'] = 0
         seg_images = seg_image(st.session_state["segmentor"], st.session_state["crop_images"])
-        st.session_state["gan_images"] = Inpainting_image(st.session_state['gan'],st.session_state["crop_images"],seg_images)
+        # st.session_state["gan_images"] = Inpainting_image(st.session_state['gan'],st.session_state["crop_images"],seg_images)
+        st.session_state["gan_images"] = Inpainting_image_sliding(st.session_state['gan'],st.session_state["crop_images"],seg_images)
+        
         
         del st.session_state["crop_images"]
     
