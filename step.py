@@ -6,7 +6,7 @@ from utils.utils import *
 from modules.gan import GAN_image, Inpainting_image
 from modules.detection import det_image
 from modules.segmentation import seg_image
-from crop_editor import crop_canvas
+from crop_editor import crop_canvas, change_point
 import numpy as np
 import time
 
@@ -45,14 +45,15 @@ def upload_problem_images(place, router):
         st.session_state["sub_page"] = "second"
         st.session_state["file_name"] = image_file.name
 
-        if next.button("다음"):
+        if next.button(label = "다음", key='one'):
             page_chg('/',router)
 
 def run_object_detection(img, place, router):
 
     #only run once
     if "crop_images" not in st.session_state:
-        st.session_state["all"], st.session_state["crop_images"], _ = det_image(st.session_state["detector"],img)
+        st.session_state["all"], st.session_state["crop_images"], location = det_image(st.session_state["detector"],img)
+        st.session_state['location'] = change_point(img, location)
         st.session_state["flag"] = True
 
 
@@ -73,6 +74,9 @@ def run_object_detection(img, place, router):
             if len(st.session_state["crop_images"])==0:
                 place.write("틀린 문제를 찾지 못했습니다. 사용자가 직접 문제들을 그려주세요")
             
+            select = place.selectbox("Tool:", ("크기 조정", "새로 그리기"))
+            drawing_mode = {"크기 조정":"transform","새로 그리기":"rect"}
+            
             canvas_result = st_canvas(
                 fill_color = "rgba(255,165,0,0.3)",
                 stroke_width = 1,
@@ -82,17 +86,18 @@ def run_object_detection(img, place, router):
                 update_streamlit = True,
                 height = 1000,
                 width = 900,
-                drawing_mode  = "rect",
+                initial_drawing = st.session_state['location'],
+                drawing_mode  = drawing_mode[select],
                 key = "canvas"
                 )
     
-    if next.button("NEXT"):
+    if next.button(label="다음",key='two'):
         if st.session_state["flag"]:
             st.session_state['sub_page'] = "third"
             del st.session_state['flag']
             page_chg('/',router)
         elif len(canvas_result.json_data['objects'])!=0:
-            st.session_state["crop_images"] = crop_canvas(canvas_result, img)
+            crop_canvas(canvas_result, img)
             st.session_state['sub_page'] = "third"
             del st.session_state['flag']
             page_chg('/',router)
