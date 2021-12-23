@@ -41,7 +41,7 @@ model = dict(
         loss_decode=dict(
             type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.4)),
     train_cfg=dict(),
-    test_cfg=dict(mode='slide', stride=(200, 200), crop_size=(512, 512)))
+    test_cfg=dict(mode='slide', stride=(200, 200), crop_size=(384, 384)))
 dataset_type = 'CustomDataset'
 data_root = '/opt/ml/data/math/background/'
 classes = ['Background', 'printing', 'handwriting']
