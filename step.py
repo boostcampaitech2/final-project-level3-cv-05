@@ -53,6 +53,10 @@ def run_object_detection(img, place, router):
         st.session_state['sub_page'] = "third"
         page_chg('/',router)    
     #only run once
+    if place.button("test"):
+        place.empty()
+        place.write("test")
+
     if "crop_images" not in st.session_state:
         st.session_state["all"], st.session_state["crop_images"], _ = OD_image(st.session_state["detector"],img)
 
