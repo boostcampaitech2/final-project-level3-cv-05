@@ -99,7 +99,7 @@ def ori_copy(ori_image, dst_image):
 
 
 # @st.cache(hash_funcs={torch.nn.parameter.Parameter: lambda parameter: parameter.data.numpy()})
-@st.cache
+@st.cache(allow_output_mutation=True)
 def seg_init():
     segmentor = load_model(cfg_path = './checkpoints/deeplabv3.py', 
                            ckpt_path = './checkpoints/best_mIoU_epoch_8.pth')
@@ -120,7 +120,7 @@ def seg_image(model, images):
         result[output == 1] = 0
         kernel = np.full((3,3), 1)
         result = cv2.morphologyEx(result, cv2.MORPH_CLOSE, kernel)
-        # ori_copy(ori_image,result)
+        ori_copy(ori_image,result)
         results.append(result)
     
     return results

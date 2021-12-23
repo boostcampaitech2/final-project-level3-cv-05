@@ -104,7 +104,7 @@ def crop_from_crop_locations(img, crop_locations):
     return crop_images
 
 #Object Detection
-@st.cache
+@st.cache(allow_output_mutation=True)
 def det_init():
     detector = load_model(cfg_path = "./checkpoints/yolov3_config.py", 
                     ckpt_path = "./checkpoints/yolov3_weight.pth")
