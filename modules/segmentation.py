@@ -3,124 +3,112 @@ import streamlit as st
 import numpy as np
 
 import mmcv
-from mmcv.parallel import MMDataParallel
 from mmcv.runner import load_checkpoint
 
 from mmseg.models import build_segmentor
-from mmseg.datasets import build_dataloader, build_dataset
-
 import cv2
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from utils.utils import mkdir
 
 
-def slide_load_model(config_dir, checkpoint):
-    cfg = mmcv.Config.fromfile(config_dir)
-    
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+
+mean=[123.675, 116.28, 103.53]
+std=[58.395, 57.12, 57.375]
+# Normalize = A.Normalize(mean=mean, std=std)
+Totensor = ToTensorV2()
+
+@st.cache
+def load_model(cfg_path, ckpt_path):
+    cfg = mmcv.Config.fromfile(cfg_path)
     cfg.model.pretrained = None
-    cfg.data.test.test_mode = True
-
     cfg.model.train_cfg = None
-
-    # slide window
-    cfg.model.test_cfg.mode = 'slide'
-    cfg.model.test_cfg.stride = (200,200)
-    cfg.model.test_cfg.crop_size = (384,384)
-
+    cfg.data.samples_per_gpu = 1
+    cfg.data.workers_per_gpu = 1
+    
     model = build_segmentor(cfg.model, test_cfg=cfg.get('test_cfg'))
-
-    checkpoint = load_checkpoint(model, checkpoint, map_location='cpu')
-
-    if 'CLASSES' in checkpoint.get('meta', {}):
-        model.CLASSES = checkpoint['meta']['CLASSES']
-    else:
-        print('"CLASSES" not found in meta, use dataset.CLASSES instead')
-        model.CLASSES = dataset.CLASSES
-    if 'PALETTE' in checkpoint.get('meta', {}):
-        model.PALETTE = checkpoint['meta']['PALETTE']
-    else:
-        print('"PALETTE" not found in meta, use dataset.PALETTE instead')
-        model.PALETTE = dataset.PALETTE
+    checkpoint = load_checkpoint(model, ckpt_path, map_location='cpu')
     
-    return MMDataParallel(model, device_ids=[0]), cfg
-
-
-def slide_inference(model, cfg, images):
-    cfg.data.test.img_dir = './crop_images/'
-    cfg.data.test.img_suffix = '.png'
-    cfg.data.test.ann_dir = None
+    model.PALETTE = [[0, 0, 0], [192, 0, 128], [0, 128, 192]]
+    model.CLASSES = ['Background', 'printing', 'handwriting']
     
-    mkdir(cfg.data.test.img_dir)
-    for idx, image in enumerate(images):
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        cv2.imwrite(f'{cfg.data.test.img_dir}{str(idx).zfill(2)}.png', image)
+    return model
 
-    test_pipeline = [
-    dict(type='LoadImageFromFile'),
-    dict(type='MultiScaleFlipAug',
-        img_scale=None,
-        img_ratios=[2.0],
-        flip=False,
-        transforms=[
-            dict(type='Resize',keep_ratio=True),
-            dict(type='RandomFlip'),
-            dict(
-                type='Normalize',
-                mean=[123.675, 116.28, 103.53],
-                std=[58.395, 57.12, 57.375],
-                to_rgb=True),
-            dict(type='ImageToTensor', keys=['img']),
-            dict(type='Collect', keys=['img'])
-        ])
-    ]
-    cfg.data.test.pipeline = test_pipeline
+def preprocess_img(img):
+    assert isinstance(img, np.ndarray)
+    assert img.shape[2] == 3
+
+    img_meta = dict()
+    img_meta['filename'] = ''
+    img_meta['ori_filename'] = ''
+    img_meta['ori_shape'] = img.shape
+
+    img = cv2.resize(img, (img.shape[1]*2,img.shape[0]*2))
+    # img = Normalize(image=img)['image']
+    img = mmcv.imnormalize(img, np.array(mean), np.array(std), True)
+    img_meta['img_shape'] = img.shape
+    img_meta['pad_shape'] = img.shape
     
-    dataset = build_dataset(cfg.data.test)
+    scale_factor = [resize/ori for ori, resize in zip(img_meta['ori_shape'], img_meta['img_shape'][:2])]
+    img_meta['scale_factor'] = np.array(scale_factor+scale_factor, dtype=np.float32)
     
-    data_loader = build_dataloader(
-            dataset,
-            samples_per_gpu=1,
-            workers_per_gpu=1,
-            shuffle=False)
+    img = Totensor(image=img)['image']
+    
+    img_meta['flip'] = False
+    img_meta['flip_direction'] = None
+    
+    img_meta['img_norm_cfg'] =  {'mean': np.array(mean, dtype=np.float32),
+                                'std': np.array(std, dtype=np.float32),
+                                'to_rgb': True}
+    
+    return img, img_meta
 
-    torch.cuda.empty_cache()
-
+def slide_inference(model, images):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = model.to(device)
     model.eval()
-    results,ori = [],[]
-    for data in data_loader:
-        with torch.no_grad():
+
+    results = []
+    for ori_img in images :
+        torch.cuda.empty_cache()
+
+        img, img_meta = preprocess_img(ori_img)
+        img = img.unsqueeze(0).to(device)
+        data = {'img_metas':[[img_meta]] , 'img':[img]}
+        with torch.no_grad() :
             results.append(*model(return_loss=False, **data))
-            ori.append(data['img'][0])
-    os.system(f'rm -r {cfg.data.test.img_dir}')
-    return results, ori
+    return results, images
+
+def ori_copy(ori_image, dst_image):
+        
+    h,w = dst_image.shape[:2]
+    ori_image = cv2.resize(ori_image,(w,h))  
+    
+    dst_image_mask = np.zeros((h,w,1)).astype(np.uint8)
+    dst_image_mask[dst_image[:,:,0] < 200] = 255 
+    
+    cv2.copyTo(ori_image, dst_image_mask, dst_image)
 
 
-def ori_copy(ori_image, output):
-    image_mask = np.zeros(output.shape).astype(np.uint8)
-    x, y, _ = np.where(output == 0)
-    for x_, y_ in zip(x, y):
-        image_mask[x_, y_, :] = 255
+@st.cache(allow_output_mutation=True)
+def seg_init():
+    segmentor = load_model(cfg_path = './checkpoints/deeplabv3.py', 
+                           ckpt_path = './checkpoints/best_mIoU_epoch_8.pth')
 
-    cv2.copyTo(ori_image, image_mask, output)
-    return output
+    return segmentor
 
 
 @st.cache
-def seg_image(images):    
-    config_dir = './models/deeplabv3.py'
-    checkpoint = './checkpoints/best_mIoU_epoch_8.pth'
-    model, cfg = slide_load_model(config_dir, checkpoint)
-    outputs, oris = slide_inference(model, cfg, images)
+def seg_image(model, images):    
+    outputs, oris = slide_inference(model, images)
 
     results = list()
     for ori_image, output in zip(images, outputs):
         h, w = output.shape
         result = np.full((h,w,3), 255).astype(np.uint8)
         result[output == 1] = 0
-        kernel = np.full((4,4), 1)
+        kernel = np.full((3,3), 1)
         result = cv2.morphologyEx(result, cv2.MORPH_CLOSE, kernel)
+        # ori_copy(ori_image,result)
         results.append(result)
     
     return results
