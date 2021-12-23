@@ -4,7 +4,7 @@ from PIL import Image, ImageOps
 from utils.utils import *
 
 from modules.gan import GAN_image, Inpainting_image
-from modules.detection import OD_image
+from modules.detection import det_image
 from modules.segmentation import seg_image
 from crop_editor import crop_canvas
 import numpy as np
@@ -47,22 +47,29 @@ def upload_problem_images(place, router):
 
 def run_object_detection(img, place, router):
     place.subheader("틀린 문제를 잘랐습니다.")
-    place.subheader("다시 자르고 싶다면 새로그리기를 누르고, 저장해주세요.")
-
-    if place.button("글씨 지우기"):
-        st.session_state['sub_page'] = "third"
-        page_chg('/',router)    
+    place.subheader("다시 자르고 싶다면 새로 그려")
     #only run once
-    if place.button("test"):
-        place.empty()
-        place.write("test")
-
     if "crop_images" not in st.session_state:
-        st.session_state["all"], st.session_state["crop_images"], _ = OD_image(st.session_state["detector"],img)
+        st.session_state["all"], st.session_state["crop_images"], _ = det_image(st.session_state["detector"],img)
+        st.session_state["flag"] = True
+
+        if len(st.session_state["crop_images"])==0:
+            st.session_state["flag"] = False
+        
+    
+    next, new = place.columns(2)
+    
+    if new.button("새로 그리기"):
+        st.session_state["flag"] = False
+        page_chg('/',router)    
+
 
     if "crop_images" in st.session_state:
-        if len(st.session_state["crop_images"])==0:
-            place.write("틀린 문제를 찾지 못했습니다. 사용자가 직접 문제들을 그려주세요")
+        if st.session_state["flag"]:
+            place.image(st.session_state["all"])
+        else:
+            if len(st.session_state["crop_images"])==0:
+                place.write("틀린 문제를 찾지 못했습니다. 사용자가 직접 문제들을 그려주세요")
             
             canvas_result = st_canvas(
                 fill_color = "rgba(255,165,0,0.3)",
@@ -76,47 +83,29 @@ def run_object_detection(img, place, router):
                 drawing_mode  = "rect",
                 key = "canvas"
                 )
-            if place.button("그린 문제들 저장"):
-                if len(canvas_result.json_data['objects'])!=0:
-                    st.session_state["crop_images"] = crop_canvas(canvas_result, img)
-                    page_chg('/',router)
-                else:
-                    place.warning("저장할 문제가 없습니다.")
+    
+    if next.button("다음"):
+        if st.session_state["flag"]:
+            st.session_state['sub_page'] = "third"
+            del st.session_state['flag']
+            page_chg('/',router)
+        elif len(canvas_result.json_data['objects'])!=0:
+            st.session_state["crop_images"] = crop_canvas(canvas_result, img)
+            st.session_state['sub_page'] = "third"
+            del st.session_state['flag']
+            page_chg('/',router)
         else:
-            place.image(st.session_state["all"])
-            #SAVE Image or draw new box/Further : 틀린 문제 말고도 사용자가 더 원하는 문제가 있으면 자를 수 있도록 하면 좋을 듯
-            if place.checkbox("새로 그리기"):
-                #canvas and update image
-                canvas_result = st_canvas(
-                fill_color = "rgba(255,165,0,0.3)",
-                stroke_width = 1,
-                stroke_color = "#000",
-                background_color = "#eee",
-                background_image = img.resize((1000,900)),
-                update_streamlit = True,
-                height = 1000,
-                width = 900,
-                drawing_mode  = "rect",
-                key = "canvas"
-                )
-                if place.button("새로 저장"):
-                    if len(canvas_result.json_data['objects'])!=0:
-                        st.session_state["crop_images"] = crop_canvas(canvas_result, img)
-                        page_chg('/',router)
-                    else:
-                        place.warning("저장할 문제가 없습니다.")
-                
+            place.warning("저장할 문제가 없습니다.")
+
 
 
 def run_seg(place, router):
-
-    place.subheader("손글씨 지운 사진 확인하고, 문제의 과목과 답을 입력하세요.") #Show Clear image
     place.subheader("문제의 과목과 답을 입력 후에, 문제들을 저장하세요.")
     #only run once
     #해당 페이지에서 다시 새로고침하면, 뜨지 않음.
     if "idx" not in st.session_state:
         st.session_state['idx'] = 0
-        seg_images = seg_image(st.session_state["crop_images"])
+        seg_images = seg_image(st.session_state["segmentor"],st.session_state["crop_images"])
         st.session_state["gan_images"] = Inpainting_image(st.session_state['gan'],st.session_state["crop_images"],seg_images)
         
         del st.session_state["crop_images"]
