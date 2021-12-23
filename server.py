@@ -26,7 +26,8 @@ def session_init():
         st.session_state['prev_menu'] = ''
     if 'detector' not in st.session_state:
         st.session_state["detector"] = det_init()
-    if 'segmentor' not in st.session_state:
+
+    if 'segmentor' not in st.session_state :
         st.session_state["segmentor"] = seg_init()
     if 'gan' not in st.session_state:
         st.session_state['gan'] = load_cyclegan_model()
