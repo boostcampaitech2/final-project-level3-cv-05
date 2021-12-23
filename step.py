@@ -8,6 +8,7 @@ from modules.detection import det_image
 from modules.segmentation import seg_image
 from crop_editor import crop_canvas
 import numpy as np
+import time
 
 import cv2
 import os
@@ -21,44 +22,56 @@ def create_download_link(val, filename):
     b64 = base64.b64encode(val)  # val looks like b'...'
     return f'<a href="data:application/octet-stream;base64,{b64.decode()}" download="{filename}.pdf">Download file</a>'
 
-@st.cache
+#@st.cache
+@st.cache(suppress_st_warning=True)
 def load_image(image_file):
     img = Image.open(image_file)
     img = ImageOps.exif_transpose(img)
-    return img 
+    return img
 
 def upload_problem_images(place, router):
-    #TO DO : Get New Data, then reset cache
-    image_file = place.file_uploader("Upload Image",type=['png','jpeg','jpg'])
-    img = None 
+    upload_box = place.container()
+    image_file = upload_box.file_uploader("Upload Image",type=['png','jpeg','jpg'])
 
-    if image_file is not None:
+
+    if image_file:
         img = load_image(image_file) #Get Image
         img = img.convert('RGB') #RGBA -> RGB
         st.session_state["image"] = img
-         #TO DO : Find Error cuase over 50MB sol:Resize, change to ratio (1080x1920)
+        
         _, _, next = place.columns(3)
         place.image(st.session_state["image"])
 
+        st.session_state["sub_page"] = "second"
+        st.session_state["file_name"] = image_file.name
+
         if next.button("다음"):
-            st.session_state["file_name"] = image_file.name
-            st.session_state["sub_page"] = "second"
             page_chg('/',router)
 
 def run_object_detection(img, place, router):
-    place.subheader("틀린 문제를 잘랐습니다.")
-    place.subheader("다시 자르고 싶다면 새로그리기를 누르고, 저장해주세요.")
 
-    if place.button("글씨 지우기"):
-        st.session_state['sub_page'] = "third"
-        page_chg('/',router)    
     #only run once
     if "crop_images" not in st.session_state:
         st.session_state["all"], st.session_state["crop_images"], _ = det_image(st.session_state["detector"],img)
+        st.session_state["flag"] = True
+
+
+        if len(st.session_state["crop_images"])==0:
+            st.session_state["flag"] = False
+
+    next, new = place.columns(2)
+    
+    if new.button("새로 그리기"):
+        st.session_state["flag"] = False
+        page_chg('/',router)    
+
 
     if "crop_images" in st.session_state:
-        if len(st.session_state["crop_images"])==0:
-            place.write("틀린 문제를 찾지 못했습니다. 사용자가 직접 문제들을 그려주세요")
+        if st.session_state["flag"]:
+            place.image(st.session_state["all"])
+        else:
+            if len(st.session_state["crop_images"])==0:
+                place.write("틀린 문제를 찾지 못했습니다. 사용자가 직접 문제들을 그려주세요")
             
             canvas_result = st_canvas(
                 fill_color = "rgba(255,165,0,0.3)",
@@ -72,42 +85,24 @@ def run_object_detection(img, place, router):
                 drawing_mode  = "rect",
                 key = "canvas"
                 )
-            if place.button("그린 문제들 저장"):
-                if len(canvas_result.json_data['objects'])!=0:
-                    st.session_state["crop_images"] = crop_canvas(canvas_result, img)
-                    page_chg('/',router)
-                else:
-                    place.warning("저장할 문제가 없습니다.")
+    
+    if next.button("NEXT"):
+        if st.session_state["flag"]:
+            st.session_state['sub_page'] = "third"
+            del st.session_state['flag']
+            page_chg('/',router)
+        elif len(canvas_result.json_data['objects'])!=0:
+            st.session_state["crop_images"] = crop_canvas(canvas_result, img)
+            st.session_state['sub_page'] = "third"
+            del st.session_state['flag']
+            page_chg('/',router)
         else:
-            place.image(st.session_state["all"])
-            #SAVE Image or draw new box/Further : 틀린 문제 말고도 사용자가 더 원하는 문제가 있으면 자를 수 있도록 하면 좋을 듯
-            if place.checkbox("새로 그리기"):
-                #canvas and update image
-                canvas_result = st_canvas(
-                fill_color = "rgba(255,165,0,0.3)",
-                stroke_width = 1,
-                stroke_color = "#000",
-                background_color = "#eee",
-                background_image = img.resize((1000,900)),
-                update_streamlit = True,
-                height = 1000,
-                width = 900,
-                drawing_mode  = "rect",
-                key = "canvas"
-                )
-                if place.button("새로 저장"):
-                    if len(canvas_result.json_data['objects'])!=0:
-                        st.session_state["crop_images"] = crop_canvas(canvas_result, img)
-                        page_chg('/',router)
-                    else:
-                        place.warning("저장할 문제가 없습니다.")
-                
+            place.warning("저장할 문제가 없습니다.")
+
 
 
 def run_seg(place, router):
-
-    place.subheader("손글씨 지운 사진 확인하고, 문제의 과목과 답을 입력하세요.") #Show Clear image
-    place.subheader("문제의 과목과 답을 입력 후에, 문제들을 저장하세요.")
+    
     #only run once
     #해당 페이지에서 다시 새로고침하면, 뜨지 않음.
     if "idx" not in st.session_state:
@@ -116,7 +111,7 @@ def run_seg(place, router):
         st.session_state["gan_images"] = Inpainting_image(st.session_state['gan'],st.session_state["crop_images"],seg_images)
         
         del st.session_state["crop_images"]
-
+    
     place.image(st.session_state["gan_images"][st.session_state['idx']])
     before_p, save, next_p = place.columns(3)
     sub = place.text_input("과목은?")
@@ -167,6 +162,7 @@ def make_problem_pdf(place, router, images, flag):
     
     img1, img2, img3 = place.columns(3)
     ch1, ch2, ch3 = place.columns(3)
+    b1,b2,b3,b4 = place.columns(4)
 
     if "idx_p" not in st.session_state:
         st.session_state["idx_p"] = 0
@@ -201,14 +197,14 @@ def make_problem_pdf(place, router, images, flag):
         img3.empty()
 
     #Next button
-    if place.button("다음으로"):
+    if b1.button("다음으로"):
         if len(images) > st.session_state["idx_p"]:
             st.session_state["idx_p"] += 3
             page_chg('/',router)
         else:
             st.warning("문제가 끝났습니다.")
 
-    export_as_problem_pdf = st.button("문제지 출력")
+    export_as_problem_pdf = b2.button("문제지 출력")
     if export_as_problem_pdf:
         if os.path.isdir("save"):
             # A4 size [width : 210, height : 287]
@@ -241,7 +237,7 @@ def make_problem_pdf(place, router, images, flag):
             html = create_download_link(pdf.output(dest="S").encode("latin-1"), "problem")
             st.markdown(html, unsafe_allow_html = True)
     
-    export_as_answer_pdf = st.button("답지 출력")
+    export_as_answer_pdf = b3.button("답지 출력")
     if export_as_answer_pdf:
         pdf = FPDF()
         pdf.add_page()
@@ -253,9 +249,9 @@ def make_problem_pdf(place, router, images, flag):
         st.markdown(html, unsafe_allow_html = True)
     
     if flag:
-        _, col2 = place.columns(2)
-        if col2.button("처음으로"):
+        if b4.button("처음으로"):
             del st.session_state["idx_p"]
+            del st.session_state["sub_page"]
             st.session_state['sub_page'] = "first"
             page_chg('/',router)
 

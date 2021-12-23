@@ -26,6 +26,7 @@ def session_init():
         st.session_state['prev_menu'] = ''
     if 'detector' not in st.session_state:
         st.session_state["detector"] = det_init()
+
     if 'segmentor' not in st.session_state :
         st.session_state["segmentor"] = seg_init()
     if 'gan' not in st.session_state:
@@ -120,20 +121,19 @@ def streamlit_run():
             for key in sess_state.keys():
                 if key not in ['wrong_num', 'user_name', 'user_id', 'auth_status', 'prev_menu']:
                     del sess_state[key]
-            #four session
+
+        if 'sub_page' not in sess_state.keys():
             sess_state['sub_page'] = 'first'
 
         # main content
         st.title("수학 오답 노트 생성기")
+        place = st.empty()
 
         if choice == "실행":
             st.sidebar.text("1: 파일 올리기")
             st.sidebar.text("2: 이미지 자르기")
             st.sidebar.text("3: 손글씨 지우기")
             st.sidebar.text("4: PDF 출력")
-
-            #Use empty - Container
-            place = st.empty()
 
             #Upload problem
             sub_page = sess_state["sub_page"]
@@ -153,8 +153,6 @@ def streamlit_run():
             #Make PDF
             elif sub_page == "fourth":
                 fourth = place.container()
-                fourth.subheader("4. 문제를 선택하고, 문제지와 답지를 PDF로 받으세요!")
-
                 images =  run_select('SELECT * from problems where user_id="%s";' % sess_state['user_id'])
 
                 make_problem_pdf(fourth, router, images, True)
