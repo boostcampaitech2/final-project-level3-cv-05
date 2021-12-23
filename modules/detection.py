@@ -103,8 +103,8 @@ def crop_from_crop_locations(img, crop_locations):
     return crop_images
 
 #Object Detection
-@st.cache
-def OD_init():
+@st.cache(allow_output_mutation=True)
+def det_init():
     detector = load_model(cfg_path = "./models/yolov3_config.py", 
                     ckpt_path = "./checkpoints/yolov3_weight.pth")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -114,7 +114,7 @@ def OD_init():
 
 
 @st.cache
-def OD_image(detector, image):
+def det_image(detector, image):
     ''' Crop uncorrect problem
     Parameters:
         image : PIL Image Type
