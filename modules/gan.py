@@ -80,6 +80,67 @@ def Inpainting_image(gan_model, ori_images, target_images):
 
     return outputs
 
+@st.cache
+def Inpainting_image_sliding(gan_model, ori_images, target_images):
+    ''' Inpainting the result of segmentation using sliding window
+    Parameters:
+        ori_images : list of original images (before segmentation) (numpy array type)
+        target_images : list of images to inpaint (after segmentation) (numpy array type)
+    '''
+    # data transform
+    load_size = [512,512]
+    img_transform = A.Compose([
+        A.Resize(load_size[0], load_size[1], 2),
+        A.ToGray(always_apply=True),
+        A.Normalize((0.5,), (0.5,)),
+        A.pytorch.ToTensorV2()])
+    
+    # image crop and inference
+    crop_size=384
+    result_outputs = list()
+    for ori_img, target_img in zip(ori_images, target_images):
+        
+        h,w,c = ori_img.shape
+        vert_crop_num = h//crop_size
+        hori_crop_num = w//crop_size
+        vert_crop_coords = [crop_size*(v_idx+1) for v_idx in range(vert_crop_num)] + [h]
+        hori_crop_coords = [crop_size*(h_idx+1) for h_idx in range(hori_crop_num)] + [w]
+        
+        crop_images = []
+        inputs = []
+        cur_h, cur_v = 0, 0
+        input_shape = list()
+        for h_coord in hori_crop_coords:
+            cur_v = 0
+            for v_coord in vert_crop_coords:
+                ori_crop = ori_img[cur_v:v_coord, cur_h:h_coord]
+                target_crop = target_img[cur_v:v_coord, cur_h:h_coord]
+                input_shape.append((v_coord-cur_v, h_coord-cur_h, 3))
+                ori_crop = img_transform(image=cv2.cvtColor(ori_crop, cv2.COLOR_RGB2GRAY))['image']
+                target_crop = img_transform(image=cv2.cvtColor(target_crop, cv2.COLOR_RGB2GRAY))['image']
+                concat_crop = torch.cat([ori_crop, target_crop])
+                cur_v = v_coord
+                inputs.append(concat_crop)
+            cur_h = h_coord
+                
+                
+        inputs = torch.stack(inputs, 0)
+        outputs = np.zeros_like(ori_img)
+        with torch.no_grad():
+            output = gan_model(inputs)
+            output = torch.mean(output, dim=1, keepdim=True)
+            cur_h, cur_v = 0, 0
+            output = tensor2im(output, input_shape)
+            for h_idx, h_coord in enumerate(hori_crop_coords):
+                cur_v = 0
+                for v_idx, v_coord in enumerate(vert_crop_coords):
+                    outputs[ cur_v:v_coord, cur_h:h_coord] = output[h_idx*(vert_crop_num+1)+v_idx]
+                    cur_v = v_coord
+                cur_h = h_coord
+            result_outputs.append(outputs)
+            
+    return result_outputs
+
 
 def tensor2im(input_image, input_im_shape, imtype=np.uint8):
     """"Converts a Tensor array into a numpy image array.
