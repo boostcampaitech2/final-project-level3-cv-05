@@ -91,7 +91,7 @@ def ori_copy(ori_image, dst_image):
 
 @st.cache(allow_output_mutation=True)
 def seg_init():
-    segmentor = load_model(cfg_path = './checkpoints/deeplabv3.py', 
+    segmentor = load_model(cfg_path = './models/deeplabv3.py', 
                            ckpt_path = './checkpoints/best_mIoU_epoch_8.pth')
 
     return segmentor
