@@ -95,11 +95,15 @@ def run_object_detection(img, place, router):
         if st.session_state["flag"]:
             st.session_state['sub_page'] = "third"
             del st.session_state['flag']
+            del st.session_state['location']
+            del st.session_state['all']
             page_chg('/',router)
         elif len(canvas_result.json_data['objects'])!=0:
             crop_canvas(canvas_result, img)
             st.session_state['sub_page'] = "third"
             del st.session_state['flag']
+            del st.session_state['location']
+            del st.session_state['all']
             page_chg('/',router)
         else:
             place.warning("저장할 문제가 없습니다.")
@@ -167,7 +171,7 @@ def make_problem_pdf(place, router, images, flag):
     
     img1, img2, img3 = place.columns(3)
     ch1, ch2, ch3 = place.columns(3)
-    b1,b2,b3,b4 = place.columns(4)
+    b0, b1, b2, b3, b4 = place.columns(5)
 
     if "idx_p" not in st.session_state:
         st.session_state["idx_p"] = 0
@@ -202,12 +206,17 @@ def make_problem_pdf(place, router, images, flag):
         img3.empty()
 
     #Next button
-    if b1.button("다음으로"):
+    if b0.button("다음으로"):
         if len(images) > st.session_state["idx_p"]:
             st.session_state["idx_p"] += 3
             page_chg('/',router)
         else:
             st.warning("문제가 끝났습니다.")
+
+    if b1.button("전체 문제 선택"):
+        st.session_state['pick_problem'] = [i for i in range(len(images))]
+        st.success("전체 문제를 선택했습니다.")
+
 
     export_as_problem_pdf = b2.button("문제지 출력")
     if export_as_problem_pdf:
