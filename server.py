@@ -126,10 +126,10 @@ def streamlit_run():
             sess_state['sub_page'] = 'first'
 
         # main content
-        st.title("수학 오답 노트 생성기")
         place = st.empty()
 
         if choice == "실행":
+            st.sidebar.title("수학 오답 노트 생성기")
             st.sidebar.text("1: 파일 올리기")
             st.sidebar.text("2: 이미지 자르기")
             st.sidebar.text("3: 손글씨 지우기")
