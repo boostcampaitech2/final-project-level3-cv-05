@@ -39,7 +39,7 @@ def GAN_image(images):
         outputs = tensor2im(output)
     return outputs
 
-@st.cache
+@st.cache(allow_output_mutation=True)
 def load_cyclegan_model(model_file = 'latest_net_G_A.pth'):
     net = CycleGAN_G(2, 2, 8, 64, norm_layer=nn.BatchNorm2d, use_dropout=False)
     load_path = './checkpoints/'+model_file

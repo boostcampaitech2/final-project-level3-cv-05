@@ -111,7 +111,7 @@ def seg_init():
     return segmentor
 
 
-@st.cache
+@st.cache(allow_output_mutation=True)
 def seg_image(model, images):    
     outputs, oris = slide_inference(model, images)
 

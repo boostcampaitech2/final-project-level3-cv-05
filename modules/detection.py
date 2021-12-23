@@ -93,7 +93,6 @@ def get_crop_location(model, img, uncorrect=True, score_thresh=0.3):
 def draw_from_crop_locations(img, crop_locations, color=(255,0,0), thickness=3):
     new_img = deepcopy(img)
     for x1,y1,x2,y2 in crop_locations:
-        print(x1,y1,x2,y2)
         new_img = cv2.rectangle(new_img, (x1,y1), (x2,y2), color, thickness)
     return new_img
 
@@ -104,7 +103,7 @@ def crop_from_crop_locations(img, crop_locations):
     return crop_images
 
 #Object Detection
-@st.cache
+@st.cache(allow_output_mutation=True)
 def det_init():
     detector = load_model(cfg_path = "./checkpoints/yolov3_config.py", 
                     ckpt_path = "./checkpoints/yolov3_weight.pth")
@@ -114,7 +113,7 @@ def det_init():
     return detector
 
 
-@st.cache
+@st.cache(allow_output_mutation=True)
 def det_image(detector, image):
     ''' Crop uncorrect problem
     Parameters:
